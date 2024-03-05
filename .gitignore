@@ -1,3 +1,4 @@
+__pycache__/
 # Prerequisites
 *.d
 
@@ -6,6 +7,9 @@
 *.ko
 *.obj
 *.elf
+dist/
+build/
+nbproject/
 
 # Linker output
 *.ilk
