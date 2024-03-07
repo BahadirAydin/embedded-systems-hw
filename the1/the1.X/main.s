@@ -22,6 +22,9 @@ CONFIG DEBUG = OFF      ; Disable In-Circuit Debugger
 
 GLOBAL var1
 GLOBAL var2
+GLOBAL var3
+GLOBAL counter
+GLOBAL counter_2
 GLOBAL result
 
 ; Define space for the variables in RAM
@@ -30,9 +33,13 @@ var1:
     DS 1 ; Allocate 1 byte for var1
 var2:
     DS 1 
-temp_result:
-    DS 1   
+var3:
+    DS 1
 result: 
+    DS 1
+counter:
+    DS 1
+counter_2:
     DS 1
 
 
@@ -42,27 +49,73 @@ resetVec:
 
 PSECT CODE
 main:
-    clrf var1	; var1 = 0		
-    clrf var2   ; var2 = 0		
-    clrf result ; result = 0
+    movlw 255
+    movwf counter
+    ; PORTX consists of 8 LEDs (RX0-RX7)
+    ; LATX determines whether the pins are high or low
+    ; TRISX determines whether the pins are inputs or outputs
+    ; Set PORT(B,C,D) as output
+    movlw 255
+    movwf counter_2
 
-    movlw 4     ; WREG = 4 hexadecimal -> 04h, binary -> 0100B
-    movwf var1  ; var1 = 4; 
+    clrf TRISB
+    clrf TRISC
+    clrf TRISD
+    
+    setf TRISE ; set PORTE as input
 
-    movlw 5     ; WREG = 5
-    movwf var2  ; var1 = 5; 
+    
+    ; light up all LEDs
+    setf PORTB
+    setf LATB 
+    setf PORTC
+    setf LATC 
+    setf PORTD
+    setf LATD
+    ; wait for 1 second
+    call busy_wait
+    clrf PORTB
+    clrf LATB
+    clrf PORTC
+    clrf LATC
+    clrf PORTD
+    clrf LATD
+    call main_loop
+main_loop:
+    call update
+    goto main_loop
+    return
 
-    call fSum   ; call the function fSum and PC will push the next instruction address to the Stack
-    movwf result; result = WREG
-    comf result ; result = the complement of the result value 
-  
-    goto main   ; Jump to the label main 
+; 1000 +- 50 ms wait
+busy_wait:
+    movlw 6
+    movwf var3
+    loop1:
+        movlw 217
+        movwf var2 ; var2 = 216
+        loop2:
+            movlw 255
+            movwf var1 ; var1 = 255
+            loop3:
+                decfsz var1,1
+                goto loop3
+            decfsz var2,1
+            goto loop2
+        decfsz var3,1
+        goto loop1
+    return
 
-fSum:
-    clrf temp_result 	; temp_result = 0
-    movf var1,W		; WREG = var1 = 4
-    addwf var2,0 	; WREG = WREG + var2
-    movwf temp_result,1   ; temp_result = WREG 
-    return		; The function terminates
+update:
+    incfsz counter,1
+    return
+    counter_1_overflow:
+        ; decrement counter_2 and skip if zero
+        decfsz counter_2,1
+        return
+        toggle:
+        ; toggle RD0
+        btg LATD,0
+        ; reset counter_2
+        return
 
 end resetVec
