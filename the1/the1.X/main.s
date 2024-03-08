@@ -82,7 +82,7 @@ main:
     clrf LATD
     call main_loop
 main_loop:
-    call update
+    call blinking
     goto main_loop
     return
 
@@ -92,7 +92,7 @@ busy_wait:
     movwf var3
     loop1:
         movlw 217
-        movwf var2 ; var2 = 216
+        movwf var2 ; var2 = 217
         loop2:
             movlw 255
             movwf var1 ; var1 = 255
@@ -105,7 +105,7 @@ busy_wait:
         goto loop1
     return
 
-update:
+blinking:
     incfsz counter,1
     return
     counter_1_overflow:
@@ -115,7 +115,6 @@ update:
         toggle:
         ; toggle RD0
         btg LATD,0
-        ; reset counter_2
         return
 
 end resetVec
