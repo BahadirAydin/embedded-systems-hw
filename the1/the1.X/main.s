@@ -82,7 +82,7 @@ main:
     clrf LATD
     call main_loop
 main_loop:
-    call blinking
+    call update
     goto main_loop
     return
 
@@ -105,7 +105,7 @@ busy_wait:
         goto loop1
     return
 
-blinking:
+update:
     incfsz counter,1
     return
     counter_1_overflow:
@@ -116,5 +116,11 @@ blinking:
         ; toggle RD0
         btg LATD,0
         return
+
+detect_click:
+    ; button press is 1 to 0 transition
+    btfsc PORTE,0
+    return
+
 
 end resetVec
