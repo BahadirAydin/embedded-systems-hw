@@ -20,26 +20,31 @@ CONFIG LVP = OFF        ; Single-Supply ICSP Enable bit (Single-Supply ICSP disa
 CONFIG XINST = OFF      ; Extended Instruction Set Enable bit (Instruction set extension and Indexed Addressing mode disabled (Legacy mode))
 CONFIG DEBUG = OFF      ; Disable In-Circuit Debugger
 
-GLOBAL var1
-GLOBAL var2
-GLOBAL var3
 GLOBAL counter
 GLOBAL counter_2
-GLOBAL result
+GLOBAL counter_3
+; for button press detection
+GLOBAL prev_state_r0
+GLOBAL prev_state_r1
+GLOBAL pbar_c_on
+GLOBAL pbar_b_on
+
 
 ; Define space for the variables in RAM
 PSECT udata_acs
-var1:
-    DS 1 ; Allocate 1 byte for var1
-var2:
-    DS 1 
-var3:
-    DS 1
-result: 
-    DS 1
 counter:
     DS 1
 counter_2:
+    DS 1
+counter_3:
+    DS 1
+prev_state_r0:
+    DS 1
+prev_state_r1:
+    DS 1
+pbar_c_on:
+    DS 1
+pbar_b_on:
     DS 1
 
 
@@ -48,14 +53,20 @@ resetVec:
     goto       main
 
 PSECT CODE
+
 main:
+    call init
+    call main_loop
+init:
+    clrf pbar_c_on ; disabled by default
+    clrf pbar_b_on ; disabled by default
     movlw 255
     movwf counter
     ; PORTX consists of 8 LEDs (RX0-RX7)
     ; LATX determines whether the pins are high or low
     ; TRISX determines whether the pins are inputs or outputs
     ; Set PORT(B,C,D) as output
-    movlw 255
+    movlw 75
     movwf counter_2
 
     clrf TRISB
@@ -80,7 +91,7 @@ main:
     clrf LATC
     clrf PORTD
     clrf LATD
-    call main_loop
+    return
 main_loop:
     call update
     goto main_loop
@@ -89,23 +100,42 @@ main_loop:
 ; 1000 +- 50 ms wait
 busy_wait:
     movlw 6
-    movwf var3
+    movwf counter
     loop1:
         movlw 217
-        movwf var2 ; var2 = 217
+        movwf counter_2 ; var2 = 217
         loop2:
             movlw 255
-            movwf var1 ; var1 = 255
+            movwf counter_3 ; var1 = 255
             loop3:
-                decfsz var1,1
+                decfsz counter_3,1
                 goto loop3
-            decfsz var2,1
+            decfsz counter_2,1
             goto loop2
-        decfsz var3,1
+        decfsz counter,1
         goto loop1
+    movlw 80
+    movwf counter_2
     return
 
 update:
+    btfsc prev_state_r0,0 ; NOT skipped if button is pressed
+    call r0_released
+    btfsc prev_state_r1,0
+    call r1_released
+    register_re0:
+    btfsc prev_state_r0,0
+    goto register_re1
+    movf PORTE,0 ; WREG = PORTE
+    andlw 00000001B   ; WREG = WREG AND b'00000001
+    movwf prev_state_r0 ; prev_state_r0 is either 0 or 1
+    register_re1:
+    btfsc prev_state_r1,0
+    goto incr
+    movf PORTE,0
+    andlw 00000010B
+    movwf prev_state_r1
+    incr:
     incfsz counter,1
     return
     counter_1_overflow:
@@ -113,14 +143,40 @@ update:
         decfsz counter_2,1
         return
         toggle:
-        ; toggle RD0
-        btg LATD,0
-        return
+        btg LATD,0 ; toggle RD0
+	movlw 80
+	movwf counter_2
+	pbar_c:
+	movf PORTC,0
+	andwf pbar_c_on
+	movwf LATC
+	pbar_d:
+	movf PORTB,0
+	andwf pbar_b_on
+	movwf LATB
+	return
 
-detect_click:
-    ; button press is 1 to 0 transition
-    btfsc PORTE,0
+r0_released:
+    btfsc PORTE,0 ; if button is released toggle PORTC 
     return
+    btg pbar_c_on,0
+    clrf prev_state_r0
+    return
+r1_released:
+    btfss PORTE,1
+    return
+    clrf prev_state_r1
+    btg pbar_b_on,0
+    return
+    
 
-
+; Example case:
+; RE0 is 0.
+; I press RE0.
+; RE0 is 1. I need to detect this change and set prev_state_r0_r0 to 1.
+; I release RE0.
+; RE0 is 0. I need to detect this change and toggle the progress bar on PORTC and set prev_state_r0_r0 to 0.
+    
 end resetVec
+
+
