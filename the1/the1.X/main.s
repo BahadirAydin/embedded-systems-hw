@@ -155,7 +155,7 @@ update:
 	andwf pbar_b_on
 	movwf LATB
 	return
-x
+
 r0_released:
     btfsc PORTE,0 ; if button is released toggle PORTC 
     return
