@@ -101,8 +101,7 @@ init:
     clrf LATC
     clrf PORTD
     clrf LATD
-    clrf PORTE
-    clrf LATE
+    
     return
 main_loop:
     call update
@@ -142,7 +141,7 @@ update:
     andlw 00000001B   ; WREG = WREG AND b'00000001
     movwf prev_state_r0 ; prev_state_r0 is either 0 or 1
     register_re1:
-    btfsc prev_state_r1,0
+    btfsc prev_state_r1,1
     goto incr
     movf PORTE,0
     andlw 00000010B
@@ -158,6 +157,11 @@ update:
         btg LATD,0 ; toggle RD0
 	movlw 72
 	movwf counter_2
+	;removing the below four lines and uncommenting clrf's in btn release functions increase my score
+	btfss pbar_c_on,0
+	clrf LATC
+	btfss pbar_b_on,0
+	clrf LATB
 	pbar_c:
 	btfss pbar_c_on,0
 	goto pbar_b
@@ -201,7 +205,7 @@ r0_released:
     return
     btg pbar_c_on,0
     clrf prev_state_r0
-    clrf LATC
+    ;clrf LATC
     movlw 10000000B
     movwf pbar_c_curr_bit
     return
@@ -210,7 +214,7 @@ r1_released:
     return
     btg pbar_b_on,0
     clrf prev_state_r1
-    clrf LATB
+    ;clrf LATB
     movlw 1
     movwf pbar_b_curr_bit
     return
