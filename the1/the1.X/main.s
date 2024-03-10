@@ -28,6 +28,8 @@ GLOBAL prev_state_r0
 GLOBAL prev_state_r1
 GLOBAL pbar_c_on
 GLOBAL pbar_b_on
+GLOBAL pbar_c_curr_bit
+GLOBAL pbar_b_curr_bit
 
 
 ; Define space for the variables in RAM
@@ -46,7 +48,10 @@ pbar_c_on:
     DS 1
 pbar_b_on:
     DS 1
-
+pbar_c_curr_bit:
+    DS 1
+pbar_b_curr_bit:
+    DS 1
 
 PSECT resetVec,class=CODE,reloc=2
 resetVec:
@@ -66,8 +71,13 @@ init:
     ; LATX determines whether the pins are high or low
     ; TRISX determines whether the pins are inputs or outputs
     ; Set PORT(B,C,D) as output
-    movlw 75
+    movlw 72
     movwf counter_2
+    
+    movlw 10000000B
+    movwf pbar_c_curr_bit
+    movlw 00000001B
+    movwf pbar_b_curr_bit
 
     clrf TRISB
     clrf TRISC
@@ -91,6 +101,8 @@ init:
     clrf LATC
     clrf PORTD
     clrf LATD
+    clrf PORTE
+    clrf LATE
     return
 main_loop:
     call update
@@ -114,14 +126,14 @@ busy_wait:
             goto loop2
         decfsz counter,1
         goto loop1
-    movlw 80
+    movlw 72
     movwf counter_2 ; I set counter_2 to 80 to make it correct for first loop of update.
     return
 
 update:
     btfsc prev_state_r0,0 ; NOT skipped if button is pressed
     call r0_released
-    btfsc prev_state_r1,0
+    btfsc prev_state_r1,1
     call r1_released
     register_re0:
     btfsc prev_state_r0,0
@@ -144,29 +156,63 @@ update:
         return
         toggle:
         btg LATD,0 ; toggle RD0
-	movlw 80
+	movlw 72
 	movwf counter_2
 	pbar_c:
-	movf PORTC,0
-	andwf pbar_c_on
-	movwf LATC
-	pbar_d:
-	movf PORTB,0
-	andwf pbar_b_on
-	movwf LATB
+	btfss pbar_c_on,0
+	goto pbar_b
+	call shift_latc
+	pbar_b:
+	btfss pbar_b_on,0
+	goto endloop
+	call shift_latb
+	endloop:
 	return
+	
+shift_latc:
+    btfsc LATC,0
+    goto reset_latc
+    movf pbar_c_curr_bit,0 ; WREG = pbar_c_curr_bit
+    addwf LATC; WREG = LATC + pbar_c_curr_bit
+    rrcf pbar_c_curr_bit
+    return
+    reset_latc:
+    movlw 10000000B
+    movwf pbar_c_curr_bit
+    clrf LATC
+    return
 
+    
+shift_latb:
+    btfsc LATB,7
+    goto reset_latb
+    movf pbar_b_curr_bit,0 ; WREG = pbar_b_curr_bit
+    addwf LATB; WREG = LATB + pbar_b_curr_bit
+    rlcf pbar_b_curr_bit
+    return
+    reset_latb:
+	movlw 1
+	movwf pbar_b_curr_bit
+	clrf LATB
+	return
+    
 r0_released:
     btfsc PORTE,0 ; if button is released toggle PORTC 
     return
     btg pbar_c_on,0
     clrf prev_state_r0
+    clrf LATC
+    movlw 10000000B
+    movwf pbar_c_curr_bit
     return
 r1_released:
-    btfss PORTE,1
+    btfsc PORTE,1
     return
-    clrf prev_state_r1
     btg pbar_b_on,0
+    clrf prev_state_r1
+    clrf LATB
+    movlw 1
+    movwf pbar_b_curr_bit
     return
     
 
