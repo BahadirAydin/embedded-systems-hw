@@ -115,7 +115,7 @@ busy_wait:
         decfsz counter,1
         goto loop1
     movlw 80
-    movwf counter_2
+    movwf counter_2 ; I set counter_2 to 80 to make it correct for first loop of update.
     return
 
 update:
@@ -155,7 +155,7 @@ update:
 	andwf pbar_b_on
 	movwf LATB
 	return
-
+x
 r0_released:
     btfsc PORTE,0 ; if button is released toggle PORTC 
     return
