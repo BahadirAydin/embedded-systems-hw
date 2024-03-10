@@ -220,9 +220,9 @@ r1_released:
 ; Example case:
 ; RE0 is 0.
 ; I press RE0.
-; RE0 is 1. I need to detect this change and set prev_state_r0_r0 to 1.
+; RE0 is 1. I need to detect this change and set prev_state_r0 to 1.
 ; I release RE0.
-; RE0 is 0. I need to detect this change and toggle the progress bar on PORTC and set prev_state_r0_r0 to 0.
+; RE0 is 0. I need to detect this change and toggle the progress bar on PORTC and set prev_state_r0 to 0.
     
 end resetVec
 
