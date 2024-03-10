@@ -157,7 +157,6 @@ update:
         btg LATD,0 ; toggle RD0
 	movlw 72
 	movwf counter_2
-	;removing the below four lines and uncommenting clrf's in btn release functions increase my score
 	btfss pbar_c_on,0
 	clrf LATC
 	btfss pbar_b_on,0
@@ -205,7 +204,6 @@ r0_released:
     return
     btg pbar_c_on,0
     clrf prev_state_r0
-    ;clrf LATC
     movlw 10000000B
     movwf pbar_c_curr_bit
     return
@@ -214,7 +212,6 @@ r1_released:
     return
     btg pbar_b_on,0
     clrf prev_state_r1
-    ;clrf LATB
     movlw 1
     movwf pbar_b_curr_bit
     return
