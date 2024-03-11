@@ -71,7 +71,7 @@ init:
     ; LATX determines whether the pins are high or low
     ; TRISX determines whether the pins are inputs or outputs
     ; Set PORT(B,C,D) as output
-    movlw 72
+    movlw 78
     movwf counter_2
     
     movlw 10000000B
@@ -125,7 +125,7 @@ busy_wait:
             goto loop2
         decfsz counter,1
         goto loop1
-    movlw 72
+    movlw 78
     movwf counter_2 ; I set counter_2 to 80 to make it correct for first loop of update.
     return
 
@@ -155,7 +155,7 @@ update:
         return
         toggle:
         btg LATD,0 ; toggle RD0
-	movlw 72
+	movlw 78
 	movwf counter_2
 	btfss pbar_c_on,0
 	clrf LATC
