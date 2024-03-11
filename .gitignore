@@ -9,7 +9,6 @@ __pycache__/
 *.elf
 dist/
 build/
-nbproject/
 
 # Linker output
 *.ilk
