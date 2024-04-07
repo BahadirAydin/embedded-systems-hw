@@ -1,0 +1,21 @@
+Group Members:
+
+1) Kutay Özman, 2380798
+2) Bahadır Aydın, 2448140
+3) Yiğit Soylu, 2310464
+
+For the first kit you take:
+
+Main Board Number : 43 
+Mikroboard Number : 105
+
+Fill in below items as OK or Fail. If you write Fail for any item, then you should explain the errors you get.
+
+ * Programming the PIC18F8722 microcontroller: OK
+ * LCD check: OK
+ * 7-Segment displays check: OK
+ * ADC check: OK
+ * LEDs check: OK
+ * Buttons check: OK
+ * UART1 check: OK
+ * Piezo Buzzer check: OK
