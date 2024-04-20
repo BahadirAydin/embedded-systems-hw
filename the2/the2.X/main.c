@@ -89,13 +89,15 @@ struct current_piece{
 
 struct current_piece cp;
 unsigned char grid[8][4];       // TODO: enable CCI and make this one's type bit
+unsigned char displayValues[4]; // left to right display values
+unsigned char rotationFlag;     // TODO: enable CCI and make this one's type bit
 
 // ============================ //
 //          FUNCTIONS           //
 // ============================ //
 
 // initialize any and all global variables
-
+// do this last
 void initializeVariables(){
     
 }
@@ -104,7 +106,11 @@ void initializeVariables(){
 // rb should fire high prio,
 // timer0 should fire low prio
 void initializeInterrupts(){
-    
+    RCON = 0b10000000;  // enable priority interrupts
+    INTCON = 0b11101000; // enable low, high prio, timer0 and rbChange
+    INTCON2 = 0b10000001; // tmor0 low interrupt, rb high interrupt, 
+    // INTCON3 is for external interrupts (INT0 etc)
+    // Don't think we will be using PIE and PIR registers
 }
 
 // initialize and start timers
@@ -136,6 +142,7 @@ void createNewPiece(){
     }
     if(pieceTypeCounter > 3)
         pieceTypeCounter = 1;
+    //TODO: reset the timer, and flicking variable
 }
 
 void init(){
@@ -185,7 +192,20 @@ void rotatePiece(){
 }
 
 void writeTo7SegmentDisplay(const unsigned char val){
-    
+    static const unsigned char sevenSegmentDisplayValues[] = {
+        0x3f,
+        0x06,
+        0x5b,
+        0x4f,
+        0x66,
+        0x6D,
+        0x7D,
+        0x07,
+        0x7F,
+        0x67
+    };
+    displayValues[2] = sevenSegmentDisplayValues[val/10];
+    displayValues[3] = sevenSegmentDisplayValues[val%10];
 }
 
 // 7-sd display values are predetermined
@@ -266,6 +286,11 @@ void trySubmitPiece(){
         submitPiece();
 }
 
+// This will probably create a problem.
+// Last year's homework on 7-sd
+void lightUpSevenSegmentDisplay(){
+    1;
+}
 
 // ============================ //
 //   INTERRUPT SERVICE ROUTINE  //
@@ -296,6 +321,7 @@ int main(void)
     // Handle the movement
     // Check if there is a rotation waiting
     // Handle the rotation
+    lightUpSevenSegmentDisplay();
     
     return 1;
 }
