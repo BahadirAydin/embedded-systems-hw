@@ -62,7 +62,6 @@
 #define ROWS 4
 #define COLS 8
 
-void createNewPiece();
 
 // ============================ //
 //           NOTES              //
@@ -88,13 +87,36 @@ enum DIGITS {
     D0 = 0, D1 = 1, D2 = 2, D3 = 3
 };
 
+
+typedef unsigned char byte;
+
+typedef struct {
+    byte x;
+    byte y;
+} Point;
+
+typedef struct {
+    Point blocks[3];  // 'L' shape has 3 orientations, but can fit in a 4-block array
+    byte orientation;
+} LShape;
+
+typedef struct {
+    Point blocks[4];  // Square shape (2x2)
+} Square;
+
+typedef struct {
+    Point blocks[1];  // Dot shape (1x1)
+} Dot;
+
+byte submit = 1;
+
 // What I thought while creating this piece is that
 // boundary checking with 4 coordinates would be very easy
 // although it might store unnecessary variables (such as
 // in the case of piece 1) we can just do the rotation and
 // shift operation by swapping variables very easily.
 struct current_piece {
-    unsigned char left_coord;
+    
     unsigned char right_coord;
     unsigned char top_coord;
     unsigned char bottom_coord;
@@ -113,7 +135,19 @@ byte grid[4]; // TODO: enable CCI and make this one's type bit
 
 unsigned char displayValues[4]; // left to right display values
 unsigned char rotationFlag; // TODO: enable CCI and make this one's type bit
-typedef unsigned char byte;
+
+
+void setXthBit(byte *row, byte X){
+    *row |= (1 << X);
+}
+
+byte getXthBit(byte row, byte X) {
+    return (row >> X) & 1;
+}
+
+void clearXthBit(byte *row, byte X){
+    *row &= ~(1 << X);
+}
 
 // ============================ //
 //          FUNCTIONS           //
@@ -122,27 +156,43 @@ typedef unsigned char byte;
 // initialize any and all global variables
 // do this last
 void spawnShape(byte shape) {
-    if (shape == DOT) {
-        cp.bottom_coord = 0;
-        cp.left_coord = 0;
-        cp.right_coord = 0;
-        cp.top_coord = 0;
-        cp.current_piece_type = DOT;
-    } else if (shape == L) {
-        cp.left_coord = 0;
-        cp.top_coord = 0;
-        cp.bottom_coord = 1;
-        cp.right_coord = 1;
-        cp.current_piece_type = L;
-        cp.rotation_index = 1;
-    } else {
-        cp.left_coord = 0;
-        cp.top_coord = 0;
-        cp.bottom_coord = 1;
-        cp.right_coord = 1;
-        cp.current_piece_type = SQUARE;
+    // Clear the grid first
+    for (int i = 0; i < 4; i++) {
+        grid[i] = 0;
+    }
+
+    if (shape == 0) {
+        // DOT at the center top
+        setXthBit(&grid[0], 0);  // Assuming position (0,1) for Dot
+    } else if (shape == 1) {
+        // L shape
+        // Vertical part
+        setXthBit(&grid[0], 0);
+        setXthBit(&grid[1], 0);
+        // Horizontal part
+        setXthBit(&grid[1], 1);
+    } else if (shape == 2) {
+        // Square shape
+        setXthBit(&grid[0], 0);
+        setXthBit(&grid[0], 1);
+        setXthBit(&grid[1], 0);
+        setXthBit(&grid[1], 1);
     }
 }
+
+void printGrid(){
+    PORTC = grid[0];
+    PORTD = grid[1];
+    PORTE = grid[2];
+    PORTF = grid[3];
+}
+
+
+void printCurrentShape(){
+    //TODO
+}
+
+
 
 
 
@@ -154,14 +204,14 @@ void initializeVariables() {
     PORTD = 0x00;
     PORTE = 0x00;
     PORTF = 0x00;
-
+    PORTH = 0x00;
+    PORTJ = 0x00;
     // Loop through all grid cells and set them to zero
-    for (byte i = 0; i < 4; i++) {
-        for (byte j = 0; j < 8; j++)
-            grid[i][j] = 0;
+
+    for (byte j = 0; j < 4; j++){
+        grid[j] = 0;
     }
 }
-
 // set up interrupts
 // rb should fire high prio,
 // timer0 should fire low prio
@@ -209,30 +259,29 @@ void initializePorts() {
     TRISH = 0x00; // Configure all port H pins as outputs
 }
 
-void createNewPiece() {
-    static unsigned char pieceTypeCounter =
-        0; // TODO: see if you can transform this into an enum
-    cp.left_coord = 1;
-    cp.top_coord = 1;
-    cp.rotation_index = 1;
-    cp.current_piece_type = pieceTypeCounter;
-    switch (pieceTypeCounter++) {
-    case 0: // dot
-        cp.bottom_coord = 1;
-        cp.left_coord = 1;
-        break;
-    case 1: // square
-        // fall down
-    case 2: // L
-        cp.bottom_coord = 2;
-        cp.right_coord = 2;
-        break;
-    }
-    if (pieceTypeCounter > 3) {
-        pieceTypeCounter = 1;
-    }
-    // TODO: reset the timer, and flicking variable
-}
+// void createNewPiece() {
+//     static unsigned char pieceTypeCounter = 0; // TODO: see if you can transform this into an enum
+//     cp.left_coord = 1;
+//     cp.top_coord = 1;
+//     cp.rotation_index = 1;
+//     cp.current_piece_type = pieceTypeCounter;
+
+//     if (pieceTypeCounter == 0) { // dot
+//         cp.bottom_coord = 1;
+//         cp.left_coord = 1;
+//     } else if (pieceTypeCounter == 1 || pieceTypeCounter == 2) { // square or L
+//         cp.bottom_coord = 2;
+//         cp.right_coord = 2;
+//     }
+
+//     pieceTypeCounter++;
+//     if (pieceTypeCounter > 3) {
+//         pieceTypeCounter = 1; // reset pieceTypeCounter after it exceeds the types
+//     }
+
+//     // TODO: reset the timer, and flicking variable
+// }
+
 byte digitPatterns[10] = {
     0x3F,
     0x06,
@@ -247,47 +296,45 @@ byte digitPatterns[10] = {
 };
 
 void init() {
-    __delay_ms(1000); // wait for one second
     initializeVariables();
     initializeInterrupts();
     initializeTimers();
     initializePorts();
-    createNewPiece();
 }
 
-void movePieceDown() {
-    if (cp.bottom_coord < 8) {
-        cp.top_coord++;
-        cp.bottom_coord++;
-    }
-}
+// void movePieceDown() {
+//     if (cp.bottom_coord < 8) {
+//         cp.top_coord++;
+//         cp.bottom_coord++;
+//     }
+// }
 
-void movePieceUp() {
-    if (cp.top_coord > 1) {
-        cp.top_coord--;
-        cp.bottom_coord--;
-    }
-}
+// void movePieceUp() {
+//     if (cp.top_coord > 1) {
+//         cp.top_coord--;
+//         cp.bottom_coord--;
+//     }
+// }
 
-void movePieceLeft() {
-    if (cp.left_coord > 1) {
-        cp.left_coord--;
-        cp.right_coord--;
-    }
-}
+// void movePieceLeft() {
+//     if (cp.left_coord > 1) {
+//         cp.left_coord--;
+//         cp.right_coord--;
+//     }
+// }
 
-void movePieceRight() {
-    if (cp.right_coord < 4) {
-        cp.left_coord++;
-        cp.right_coord++;
-    }
-}
+// void movePieceRight() {
+//     if (cp.right_coord < 4) {
+//         cp.left_coord++;
+//         cp.right_coord++;
+//     }
+// }
 
-void rotatePiece() {
-    cp.rotation_index++;
-    if (cp.rotation_index > 4)
-        cp.rotation_index = 1;
-}
+// void rotatePiece() {
+//     cp.rotation_index++;
+//     if (cp.rotation_index > 4)
+//         cp.rotation_index = 1;
+// }
 
 void writeTo7SegmentDisplay(const unsigned char val) {
     static
@@ -330,32 +377,32 @@ void update7SegmentDisplay() {
 }
 
 // successful submission
-void submitPiece() {
-    grid[cp.bottom_coord][cp.left_coord] = 1;
-    grid[cp.top_coord][cp.left_coord] = 1;
-    grid[cp.top_coord][cp.right_coord] = 1;
-    grid[cp.bottom_coord][cp.right_coord] = 1;
-    if (cp.current_piece_type == 2) {
-        switch (cp.rotation_index) {
-        case 1:
-            grid[cp.bottom_coord][cp.left_coord] = 0;
-            break;
-        case 2:
-            grid[cp.top_coord][cp.left_coord] = 0;
-            break;
-        case 3:
-            grid[cp.top_coord][cp.right_coord] = 0;
-            break;
-        case 4:
-            grid[cp.bottom_coord][cp.right_coord] = 0;
-            break;
-        }
-    }
+// void submitPiece() {
+//     setXthBit(grid[cp.bottom_coord],cp.left_coord);
+//     setXthBit(grid[cp.top_coord],cp.left_coord);
+//     setXthBit(grid[cp.top_coord],cp.right_coord);
+//     setXthBit(grid[cp.bottom_coord],cp.right_coord);
+//     if (cp.current_piece_type == 2) {
+//         switch (cp.rotation_index) {
+//         case 1:
+//             getXthBit(grid[cp.bottom_coord],cp.left_coord) == 0;
+//             break;
+//         case 2:
+//             getXthBit(grid[cp.top_coord],cp.left_coord) == 0;
+//             break;
+//         case 3:
+//             getXthBit(grid[cp.top_coord],cp.right_coord) == 0;
+//             break;
+//         case 4:
+//             getXthBit(grid[cp.bottom_coord],cp.right_coord) == 0;
+//             break;
+//         }
+//     }
 
-    update7SegmentDisplay();
+//     update7SegmentDisplay();
 
-    createNewPiece();
-}
+//     createNewPiece();
+// }
 
 // check 4 boundaries of each piece
 // if any is occupied, decrement available pixels by one
@@ -364,39 +411,39 @@ void submitPiece() {
 // if available pixels is still 4 at the end, it is submittable.
 // since this is called in a high priority interrupt, it is certain
 // that it will not be interrupted.
-void trySubmitPiece() {
-    unsigned char available_pixels = 4;
-    if (grid[cp.bottom_coord][cp.left_coord] == 0)
-        available_pixels--;
-    if (grid[cp.top_coord][cp.left_coord] == 0)
-        available_pixels--;
-    if (grid[cp.bottom_coord][cp.right_coord] == 0)
-        available_pixels--;
-    if (grid[cp.top_coord][cp.right_coord] == 0)
-        available_pixels--;
-    if (cp.current_piece_type == L) {
-        switch (cp.rotation_index) {
-        case 1:
-            if (grid[cp.bottom_coord][cp.left_coord] == 1)
-                available_pixels++;
-            break;
-        case 2:
-            if (grid[cp.top_coord][cp.left_coord] == 1)
-                available_pixels++;
-            break;
-        case 3:
-            if (grid[cp.top_coord][cp.right_coord] == 1)
-                available_pixels++;
-            break;
-        case 4:
-            if (grid[cp.bottom_coord][cp.right_coord] == 1)
-                available_pixels++;
-            break;
-        }
-    }
-    if (available_pixels == 4)
-        submitPiece();
-}
+// void trySubmitPiece() {
+//     unsigned char available_pixels = 4;
+
+//     // Use getXthBit to check if pixels are available
+//     if (getXthBit(grid[cp.bottom_coord], cp.left_coord) == 0)
+//         available_pixels--;
+//     if (getXthBit(grid[cp.top_coord], cp.left_coord) == 0)
+//         available_pixels--;
+//     if (getXthBit(grid[cp.bottom_coord], cp.right_coord) == 0)
+//         available_pixels--;
+//     if (getXthBit(grid[cp.top_coord], cp.right_coord) == 0)
+//         available_pixels--;
+
+//     if (cp.current_piece_type == L) {
+//         if (cp.rotation_index == 1) {
+//             if (getXthBit(grid[cp.bottom_coord], cp.left_coord) == 1)
+//                 available_pixels++;
+//         } else if (cp.rotation_index == 2) {
+//             if (getXthBit(grid[cp.top_coord], cp.left_coord) == 1)
+//                 available_pixels++;
+//         } else if (cp.rotation_index == 3) {
+//             if (getXthBit(grid[cp.top_coord], cp.right_coord) == 1)
+//                 available_pixels++;
+//         } else if (cp.rotation_index == 4) {
+//             if (getXthBit(grid[cp.bottom_coord], cp.right_coord) == 1)
+//                 available_pixels++;
+//         }
+//     }
+
+//     if (available_pixels == 4)
+//         submitPiece();
+// }
+
 
 void displayDigit(byte num, byte digitIndex) {
     PORTJ = digitPatterns[num]; // Send segment pattern to PORTJ
@@ -468,6 +515,11 @@ int main(void) {
             displayNumber += 1;
             toggle = 0;
             counter = 0;
+        }
+        if (submit) {
+            spawnShape(2);
+            printGrid();
+            submit = 0;
         }
     }
 
