@@ -287,7 +287,6 @@ int main(void) {
     __delay_ms(1000);
     while (1) {
         if (blink) {
-            __delay_ms(5);
             LATC ^= activePieceGrid[0];
             LATD ^= activePieceGrid[1];
             LATE ^= activePieceGrid[2];
@@ -295,14 +294,14 @@ int main(void) {
             blink = 0;
         }
         if (move_down) {
-            __delay_ms(5);
+            __delay_ms(50);
             // TIMER INTERRUPT OCCURED
             moveActivePieceDown();
             counter = 0;
             move_down = 0;
         }
         if (submit) {
-            __delay_ms(5);
+            __delay_ms(50);
             if (can_submit()) {
                 for (int i = 0; i < 4; i++) {
                     submittedGrid[i] |= activePieceGrid[i];
