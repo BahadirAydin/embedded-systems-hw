@@ -303,9 +303,9 @@ int main(void) {
             if (can_submit()) {
                 for (int i = 0; i < 4; i++) {
                     submittedGrid[i] |= activePieceGrid[i];
-                    incrementCurrentPiece();
-                    spawnShape(currentPiece);
                 }
+                incrementCurrentPiece();
+                spawnShape(currentPiece);
             }
             submit = 0;
         }
