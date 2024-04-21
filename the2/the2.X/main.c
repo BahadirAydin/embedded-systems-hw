@@ -119,21 +119,20 @@ void spawnShape(byte shape) {
         // Dot
         setXthBit(&activePieceGrid[0], 0); // Assuming position (0,1) for Dot
     } else if (shape == 1) {
+        // Square shape
+        setXthBit(&activePieceGrid[0], 0);
+        setXthBit(&activePieceGrid[0], 1);
+        setXthBit(&activePieceGrid[1], 0);
+        setXthBit(&activePieceGrid[1], 1);
+    } else if (shape == 2) {
         // L shape
         // Vertical part
         setXthBit(&activePieceGrid[0], 0);
         setXthBit(&activePieceGrid[1], 0);
         // Horizontal part
         setXthBit(&activePieceGrid[1], 1);
-    } else if (shape == 2) {
-        // Square shape
-        setXthBit(&activePieceGrid[0], 0);
-        setXthBit(&activePieceGrid[0], 1);
-        setXthBit(&activePieceGrid[1], 0);
-        setXthBit(&activePieceGrid[1], 1);
     }
 }
-
 byte can_submit() {
     for (int i = 0; i < 4; i++) {
         if (submittedGrid[i] & activePieceGrid[i]) {
@@ -214,21 +213,20 @@ byte digitPatterns[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66,
                           0x6D, 0x7D, 0x07, 0x7F, 0x6F};
 
 void init() {
+    initializePorts();
     initializeVariables();
     initializeInterrupts();
     initializeTimers();
-    initializePorts();
     spawnShape(currentPiece);
-    incrementCurrentPiece();
     printGrid();
 }
 void displayDigit(byte num, byte digitIndex) {
-    PORTJ = digitPatterns[num]; // Send segment pattern to PORTJ
-    PORTH = 0xFF; // Turn off all digits (common anode: HIGH = OFF)
+    LATJ = digitPatterns[num]; // Send segment pattern to PORTJ
+    LATH = 0xFF;               // Turn off all digits (common anode: HIGH = OFF)
     if (digitIndex == 0) {
-        PORTH &= ~0b00001000; // Activate D0 (Units)
+        LATH &= ~0b00001000; // Activate D0 (Units)
     } else if (digitIndex == 1) {
-        PORTH &= ~0b00000100; // Activate D1 (Tens)
+        LATH &= ~0b00000100; // Activate D1 (Tens)
     }
 }
 
@@ -267,7 +265,6 @@ void __interrupt(low_priority) HandleLowInterrupt(void) {
             counter++;
             blink = 1;
         }
-        // TODO: active piece blink
     }
 }
 // ============================ //
@@ -289,18 +286,18 @@ int main(void) {
     init();
     __delay_ms(1000);
     while (1) {
+        if (blink) {
+            LATC ^= activePieceGrid[0];
+            LATD ^= activePieceGrid[1];
+            LATE ^= activePieceGrid[2];
+            LATF ^= activePieceGrid[3];
+            blink = 0;
+        }
         if (move_down) {
             // TIMER INTERRUPT OCCURED
             moveActivePieceDown();
             counter = 0;
             move_down = 0;
-        }
-        if (blink) {
-            PORTC ^= activePieceGrid[0];
-            PORTD ^= activePieceGrid[1];
-            PORTE ^= activePieceGrid[2];
-            PORTF ^= activePieceGrid[3];
-            blink = 0;
         }
         if (submit) {
             if (can_submit()) {
