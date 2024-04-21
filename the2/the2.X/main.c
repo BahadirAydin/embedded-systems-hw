@@ -292,6 +292,7 @@ void moveActivePieceRight() {
     for (int i = 3; i > 0; i--) {
         activePieceGrid[i] = activePieceGrid[i - 1];
     }
+    activePieceGrid[0] = 0;
     printGrid();
 }
 
@@ -302,6 +303,7 @@ void moveActivePieceLeft() {
     for (int i = 1; i < 4; i++) {
         activePieceGrid[i - 1] = activePieceGrid[i];
     }
+    activePieceGrid[3] = 0;
     printGrid();
 }
 
