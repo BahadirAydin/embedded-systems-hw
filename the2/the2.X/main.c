@@ -99,7 +99,8 @@ volatile byte portBPins = 0;
 byte prevG = 0;
 volatile byte rotationFlag = 0;
 byte currentPiece = 0; // 0 for dot, 1 for square, 2 for L
-
+const byte displayValues[] = {1, 5, 8, 9, 13, 16, 17, 21, 24, 25, 29, 32};
+byte displayIterator = 0;
 // ============================ //
 //          FUNCTIONS           //
 // ============================ //
@@ -224,13 +225,19 @@ void init() {
     printGrid();
 }
 void displayDigit(byte num, byte digitIndex) {
-    LATJ = digitPatterns[num]; // Send segment pattern to PORTJ
+    LATJ = 0;                   // CLear latJ
     LATH = 0xFF;               // Turn off all digits (common anode: HIGH = OFF)
-    if (digitIndex == 0) {
+    if (digitIndex == 0) {  // birler
         LATH &= ~0b00001000; // Activate D0 (Units)
-    } else if (digitIndex == 1) {
+    } else if (digitIndex == 1) {   // onlar
         LATH &= ~0b00000100; // Activate D1 (Tens)
+    }else if (digitIndex == 1) {   // yuzler
+        LATH &= ~0b00000010; // Activate D2 
+    }else if (digitIndex == 1) {   // binler
+        LATH &= ~0b00000001; // Activate D3 
     }
+    LATJ = digitPatterns[num];
+    __delay_ms(1);              // Change this to adjust brightness
 }
 // ============================ //
 //   INTERRUPT SERVICE ROUTINE  //
@@ -239,6 +246,7 @@ void displayDigit(byte num, byte digitIndex) {
 __interrupt(high_priority) void HandleHighInterrupt() {
     if (INTCONbits.RBIF) {
         byte changedPins = portBPins ^ PORTB;
+        __delay_ms(5);      // manual schmitt trigger
         portBPins = PORTB;
         if (changedPins & 0b01000000) {
             // RB6: submit button
@@ -319,6 +327,17 @@ void moveActivePieceUp() {
     printGrid();
 }
 
+void refresh7SegmentDisplay(){
+    displayDigit(0, D3);                                    // binler
+    displayDigit(0, D2);                                    // yuzler
+    displayDigit(displayValues[displayIterator] / 10, D1);  // onlar
+    displayDigit(displayValues[displayIterator] % 10, D0);  // birler
+}
+
+void update7SegmentDisplay(){
+    displayIterator++;
+}
+
 int main(void) {
     init();
     __delay_ms(1000);
@@ -345,6 +364,8 @@ int main(void) {
                 }
                 incrementCurrentPiece();
                 spawnShape(currentPiece);
+                update7SegmentDisplay();
+                refresh7SegmentDisplay();
             }
             submit = 0;
         }
@@ -367,6 +388,7 @@ int main(void) {
             // RG4
             moveActivePieceLeft();
         }
+        refresh7SegmentDisplay();       // periodic refresh
     }
 
     return 1;

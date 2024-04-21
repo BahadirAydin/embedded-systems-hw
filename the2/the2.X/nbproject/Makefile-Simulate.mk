@@ -152,8 +152,6 @@ endif
 .clean-conf: ${CLEAN_SUBPROJECTS}
 	${RM} -r build/Simulate
 	${RM} -r dist/Simulate
-<<<<<<< HEAD
-=======
 
 # Enable dependency checking
 .dep.inc: .depcheck-impl
@@ -162,4 +160,3 @@ DEPFILES=$(shell "${PATH_TO_IDE_BIN}"mplabwildcard ${POSSIBLE_DEPFILES})
 ifneq (${DEPFILES},)
 include ${DEPFILES}
 endif
->>>>>>> 4db241149aec82a8ed98c5bb8e732b0cd81f3341
