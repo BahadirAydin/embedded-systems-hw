@@ -36,24 +36,23 @@
 #define _XTAL_FREQ 40 * MHZ
 #include <xc.h>
 
-#define SEG_A   LATJbits.LATJ0
-#define SEG_B   LATJbits.LATJ1
-#define SEG_C   LATJbits.LATJ2
-#define SEG_D   LATJbits.LATJ3
-#define SEG_E   LATJbits.LATJ4
-#define SEG_F   LATJbits.LATJ5
-#define SEG_G   LATJbits.LATJ6
-#define SEG_DP  LATJbits.LATJ7
+#define SEG_A LATJbits.LATJ0
+#define SEG_B LATJbits.LATJ1
+#define SEG_C LATJbits.LATJ2
+#define SEG_D LATJbits.LATJ3
+#define SEG_E LATJbits.LATJ4
+#define SEG_F LATJbits.LATJ5
+#define SEG_G LATJbits.LATJ6
+#define SEG_DP LATJbits.LATJ7
 
-#define DIG_D0  LATHbits.LATH3
-#define DIG_D1  LATHbits.LATH2
-#define DIG_D2  LATHbits.LATH1
-#define DIG_D3  LATHbits.LATH0
+#define DIG_D0 LATHbits.LATH3
+#define DIG_D1 LATHbits.LATH2
+#define DIG_D2 LATHbits.LATH1
+#define DIG_D3 LATHbits.LATH0
 
 // ============================ //
 //             End              //
 // ============================ //
-
 
 // ============================ //
 //          HEADERS             //
@@ -61,7 +60,6 @@
 
 #define ROWS 4
 #define COLS 8
-
 
 // ============================ //
 //           NOTES              //
@@ -79,14 +77,9 @@
 //        DEFINITIONS           //
 // ============================ //
 
-enum PieceTypes {
-    DOT = 0, SQUARE = 1, L = 2
-};
+enum PieceTypes { DOT = 0, SQUARE = 1, L = 2 };
 
-enum DIGITS {
-    D0 = 0, D1 = 1, D2 = 2, D3 = 3
-};
-
+enum DIGITS { D0 = 0, D1 = 1, D2 = 2, D3 = 3 };
 
 typedef unsigned char byte;
 
@@ -95,107 +88,67 @@ typedef struct {
     byte y;
 } Point;
 
-typedef struct {
-    Point blocks[3];  // 'L' shape has 3 orientations, but can fit in a 4-block array
-    byte orientation;
-} LShape;
-
-typedef struct {
-    Point blocks[4];  // Square shape (2x2)
-} Square;
-
-typedef struct {
-    Point blocks[1];  // Dot shape (1x1)
-} Dot;
-
-byte submit = 1;
-
-// What I thought while creating this piece is that
-// boundary checking with 4 coordinates would be very easy
-// although it might store unnecessary variables (such as
-// in the case of piece 1) we can just do the rotation and
-// shift operation by swapping variables very easily.
-struct current_piece {
-    
-    unsigned char right_coord;
-    unsigned char top_coord;
-    unsigned char bottom_coord;
-    enum PieceTypes current_piece_type;
-    unsigned char
-    rotation_index; // 1 means initial condition (empty dot on bottom left)
-    // and rotates counterclockwise with each increment
-};
-
 // ============================ //
 //          GLOBALS             //
 // ============================ //
 
-struct current_piece cp;
-byte grid[4]; // TODO: enable CCI and make this one's type bit
-
-unsigned char displayValues[4]; // left to right display values
-unsigned char rotationFlag; // TODO: enable CCI and make this one's type bit
-
-
-void setXthBit(byte *row, byte X){
-    *row |= (1 << X);
-}
-
-byte getXthBit(byte row, byte X) {
-    return (row >> X) & 1;
-}
-
-void clearXthBit(byte *row, byte X){
-    *row &= ~(1 << X);
-}
+byte activePieceGrid[4];
+byte submittedGrid[4];
+byte submit = 1;
+byte portBPins[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+byte rotationFlag = 0;
+byte currentPiece = 0; // 0 for dot, 1 for square, 2 for L
 
 // ============================ //
 //          FUNCTIONS           //
 // ============================ //
 
+void setXthBit(byte *row, byte X) { *row |= (1 << X); }
+byte getXthBit(byte row, byte X) { return (row >> X) & 1; }
+void clearXthBit(byte *row, byte X) { *row &= ~(1 << X); }
+
+void incrementCurrentPiece() { currentPiece = (currentPiece + 1) % 3; }
 // initialize any and all global variables
 // do this last
 void spawnShape(byte shape) {
-    // Clear the grid first
-    for (int i = 0; i < 4; i++) {
-        grid[i] = 0;
-    }
-
+    activePieceGrid[0] = 0;
+    activePieceGrid[1] = 0;
+    activePieceGrid[2] = 0;
+    activePieceGrid[3] = 0;
     if (shape == 0) {
-        // DOT at the center top
-        setXthBit(&grid[0], 0);  // Assuming position (0,1) for Dot
+        // Dot
+        setXthBit(&activePieceGrid[0], 0); // Assuming position (0,1) for Dot
     } else if (shape == 1) {
         // L shape
         // Vertical part
-        setXthBit(&grid[0], 0);
-        setXthBit(&grid[1], 0);
+        setXthBit(&activePieceGrid[0], 0);
+        setXthBit(&activePieceGrid[1], 0);
         // Horizontal part
-        setXthBit(&grid[1], 1);
+        setXthBit(&activePieceGrid[1], 1);
     } else if (shape == 2) {
         // Square shape
-        setXthBit(&grid[0], 0);
-        setXthBit(&grid[0], 1);
-        setXthBit(&grid[1], 0);
-        setXthBit(&grid[1], 1);
+        setXthBit(&activePieceGrid[0], 0);
+        setXthBit(&activePieceGrid[0], 1);
+        setXthBit(&activePieceGrid[1], 0);
+        setXthBit(&activePieceGrid[1], 1);
     }
 }
 
-void printGrid(){
-    PORTC = grid[0];
-    PORTD = grid[1];
-    PORTE = grid[2];
-    PORTF = grid[3];
+byte can_submit() {
+    for (int i = 0; i < 4; i++) {
+        if (submittedGrid[i] & activePieceGrid[i]) {
+            return 0;
+        }
+    }
+    return 1;
 }
 
-
-void printCurrentShape(){
-    //TODO
+void printGrid() {
+    PORTC = activePieceGrid[0] | submittedGrid[0];
+    PORTD = activePieceGrid[1] | submittedGrid[1];
+    PORTE = activePieceGrid[2] | submittedGrid[2];
+    PORTF = activePieceGrid[3] | submittedGrid[3];
 }
-
-
-
-
-
 
 void initializeVariables() {
     PORTA = 0x00;
@@ -206,10 +159,9 @@ void initializeVariables() {
     PORTF = 0x00;
     PORTH = 0x00;
     PORTJ = 0x00;
-    // Loop through all grid cells and set them to zero
-
-    for (byte j = 0; j < 4; j++){
-        grid[j] = 0;
+    for (int i = 0; i < 4; i++) {
+        activePieceGrid[i] = 0;
+        submittedGrid[i] = 0;
     }
 }
 // set up interrupts
@@ -224,28 +176,26 @@ void initializeInterrupts() {
 
     // Reset interrupt flags
     INTCONbits.TMR0IF = 0; // Clear Timer0 interrupt flag
-    INTCONbits.RBIF = 0; // Clear PORTB change interrupt flag
+    INTCONbits.RBIF = 0;   // Clear PORTB change interrupt flag
 
     // Configure Timer0 interrupt
-    INTCONbits.TMR0IE = 1; // Enable Timer0 interrupt
+    INTCONbits.TMR0IE = 1;  // Enable Timer0 interrupt
     INTCON2bits.TMR0IP = 0; // Set Timer0 interrupt to low priority
 
     // Configure PORTB change interrupt
-    INTCONbits.RBIE = 1; // Enable RB port change interrupt
+    INTCONbits.RBIE = 1;  // Enable RB port change interrupt
     INTCON2bits.RBIP = 1; // Set RB port change interrupt to high priority
 
-    // Enable low priority interrupt
-    INTCONbits.PEIE = 1;
-
+    INTCONbits.PEIE = 1; // Enable peripheral interrupts
     // Re-enable global interrupts
     INTCONbits.GIE = 1;
 }
 
 // initialize and start timers
 void initializeTimers() {
-    T0CON = 0b00000101; // 16-bit mode, pre-scaler 1:64
-    TMR0H = 0x65; // High byte of 26000
-    TMR0L = 0x90; // Low byte of 26000
+    T0CON = 0b00000101;   // 16-bit mode, pre-scaler 1:64
+    TMR0H = 0x65;         // High byte of 26000
+    TMR0L = 0x90;         // Low byte of 26000
     T0CONbits.TMR0ON = 1; // Start Timer0
 }
 
@@ -259,192 +209,17 @@ void initializePorts() {
     TRISH = 0x00; // Configure all port H pins as outputs
 }
 
-// void createNewPiece() {
-//     static unsigned char pieceTypeCounter = 0; // TODO: see if you can transform this into an enum
-//     cp.left_coord = 1;
-//     cp.top_coord = 1;
-//     cp.rotation_index = 1;
-//     cp.current_piece_type = pieceTypeCounter;
-
-//     if (pieceTypeCounter == 0) { // dot
-//         cp.bottom_coord = 1;
-//         cp.left_coord = 1;
-//     } else if (pieceTypeCounter == 1 || pieceTypeCounter == 2) { // square or L
-//         cp.bottom_coord = 2;
-//         cp.right_coord = 2;
-//     }
-
-//     pieceTypeCounter++;
-//     if (pieceTypeCounter > 3) {
-//         pieceTypeCounter = 1; // reset pieceTypeCounter after it exceeds the types
-//     }
-
-//     // TODO: reset the timer, and flicking variable
-// }
-
-byte digitPatterns[10] = {
-    0x3F,
-    0x06,
-    0x5B,
-    0x4F,
-    0x66,
-    0x6D,
-    0x7D,
-    0x07,
-    0x7F,
-    0x6F
-};
+byte digitPatterns[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66,
+                          0x6D, 0x7D, 0x07, 0x7F, 0x6F};
 
 void init() {
     initializeVariables();
     initializeInterrupts();
     initializeTimers();
     initializePorts();
+    spawnShape();
+    printGrid();
 }
-
-// void movePieceDown() {
-//     if (cp.bottom_coord < 8) {
-//         cp.top_coord++;
-//         cp.bottom_coord++;
-//     }
-// }
-
-// void movePieceUp() {
-//     if (cp.top_coord > 1) {
-//         cp.top_coord--;
-//         cp.bottom_coord--;
-//     }
-// }
-
-// void movePieceLeft() {
-//     if (cp.left_coord > 1) {
-//         cp.left_coord--;
-//         cp.right_coord--;
-//     }
-// }
-
-// void movePieceRight() {
-//     if (cp.right_coord < 4) {
-//         cp.left_coord++;
-//         cp.right_coord++;
-//     }
-// }
-
-// void rotatePiece() {
-//     cp.rotation_index++;
-//     if (cp.rotation_index > 4)
-//         cp.rotation_index = 1;
-// }
-
-void writeTo7SegmentDisplay(const unsigned char val) {
-    static
-    const unsigned char sevenSegmentDisplayValues[] = {
-        0x3f,
-        0x06,
-        0x5b,
-        0x4f,
-        0x66,
-        0x6D,
-        0x7D,
-        0x07,
-        0x7F,
-        0x67
-    };
-    displayValues[2] = sevenSegmentDisplayValues[val / 10];
-    displayValues[3] = sevenSegmentDisplayValues[val % 10];
-}
-
-// 7-sd display values are predetermined
-// only iterate through the values
-void update7SegmentDisplay() {
-    static unsigned char display_iterator = 0;
-    static
-    const unsigned char display_values[] = {
-        1,
-        5,
-        8,
-        9,
-        13,
-        16,
-        17,
-        21,
-        24,
-        25,
-        29,
-        32
-    };
-    writeTo7SegmentDisplay(display_values[display_iterator++]);
-}
-
-// successful submission
-// void submitPiece() {
-//     setXthBit(grid[cp.bottom_coord],cp.left_coord);
-//     setXthBit(grid[cp.top_coord],cp.left_coord);
-//     setXthBit(grid[cp.top_coord],cp.right_coord);
-//     setXthBit(grid[cp.bottom_coord],cp.right_coord);
-//     if (cp.current_piece_type == 2) {
-//         switch (cp.rotation_index) {
-//         case 1:
-//             getXthBit(grid[cp.bottom_coord],cp.left_coord) == 0;
-//             break;
-//         case 2:
-//             getXthBit(grid[cp.top_coord],cp.left_coord) == 0;
-//             break;
-//         case 3:
-//             getXthBit(grid[cp.top_coord],cp.right_coord) == 0;
-//             break;
-//         case 4:
-//             getXthBit(grid[cp.bottom_coord],cp.right_coord) == 0;
-//             break;
-//         }
-//     }
-
-//     update7SegmentDisplay();
-
-//     createNewPiece();
-// }
-
-// check 4 boundaries of each piece
-// if any is occupied, decrement available pixels by one
-// if it is an L piece, check its empty space and increment
-// available pixels by one (meaning it is available)
-// if available pixels is still 4 at the end, it is submittable.
-// since this is called in a high priority interrupt, it is certain
-// that it will not be interrupted.
-// void trySubmitPiece() {
-//     unsigned char available_pixels = 4;
-
-//     // Use getXthBit to check if pixels are available
-//     if (getXthBit(grid[cp.bottom_coord], cp.left_coord) == 0)
-//         available_pixels--;
-//     if (getXthBit(grid[cp.top_coord], cp.left_coord) == 0)
-//         available_pixels--;
-//     if (getXthBit(grid[cp.bottom_coord], cp.right_coord) == 0)
-//         available_pixels--;
-//     if (getXthBit(grid[cp.top_coord], cp.right_coord) == 0)
-//         available_pixels--;
-
-//     if (cp.current_piece_type == L) {
-//         if (cp.rotation_index == 1) {
-//             if (getXthBit(grid[cp.bottom_coord], cp.left_coord) == 1)
-//                 available_pixels++;
-//         } else if (cp.rotation_index == 2) {
-//             if (getXthBit(grid[cp.top_coord], cp.left_coord) == 1)
-//                 available_pixels++;
-//         } else if (cp.rotation_index == 3) {
-//             if (getXthBit(grid[cp.top_coord], cp.right_coord) == 1)
-//                 available_pixels++;
-//         } else if (cp.rotation_index == 4) {
-//             if (getXthBit(grid[cp.bottom_coord], cp.right_coord) == 1)
-//                 available_pixels++;
-//         }
-//     }
-
-//     if (available_pixels == 4)
-//         submitPiece();
-// }
-
-
 void displayDigit(byte num, byte digitIndex) {
     PORTJ = digitPatterns[num]; // Send segment pattern to PORTJ
     PORTH = 0xFF; // Turn off all digits (common anode: HIGH = OFF)
@@ -459,33 +234,36 @@ void displayDigit(byte num, byte digitIndex) {
 //   INTERRUPT SERVICE ROUTINE  //
 // ============================ //
 
-// Implement ONLY rb interrupts as high
-// because a high interrupt may intercept a low interrupt routine
-// we should still register if user presses RB when the timer0 interrupt is
-// going on
-__interrupt(high_priority)
-void HandleHighInterrupt() {
+__interrupt(high_priority) void HandleHighInterrupt() {
     if (INTCONbits.RBIF) {
+        byte changedPins = portBPins ^ PORTB;
+        portBPins = PORTB;
+        if (changedPins & 0b01000000) {
+            // RB6: submit button
+            submit = 1;
+        } else if (changedPins & 0b00100000) {
+            // RB5: rotate button
+            rotationFlag = 1;
+        }
         INTCONbits.RBIF = 0;
     }
 }
-// Implement ONLY timer0 interrupts as low
-// because a high interrupt may intercept a low interrupt routine
-// we should still register if user presses RB when the timer0 interrupt is
-// going on
-byte toggle = 0;
-unsigned char counter = 0;
-unsigned char displayNumber = 0;
+byte move_down = 0;
+byte counter = 0;
+byte displayNumber = 0;
+byte blink = 0;
 void __interrupt(low_priority) HandleLowInterrupt(void) {
+
     if (INTCONbits.TMR0IF) {
-        TMR0H = 0x67; // High byte of 26000
-        TMR0L = 0x75; // Low byte of 26000
+        TMR0H = 0x67;
+        TMR0L = 0x75;
         INTCONbits.TMR0IF = 0; // Clear Timer0 interrupt flag
 
-        if (counter == 4) {
-            toggle = 1;
+        if (counter == 8) {
+            move_down = 1;
         } else {
             counter++;
+            blink = 1;
         }
         // TODO: active piece blink
     }
@@ -494,31 +272,46 @@ void __interrupt(low_priority) HandleLowInterrupt(void) {
 //            MAIN              //
 // ============================ //
 
+void moveActivePieceDown() {
+    // Check if moving down is possible (no collision)
+    for (int i = 3; i > 0; i--) {
+        if ((activePieceGrid[i - 1] >> 1) & submittedGrid[i]) {
+            // Collision detected, move not possible
+            return;
+        }
+    }
+    for (int i = 3; i > 0; i--) {
+        activePieceGrid[i] = activePieceGrid[i - 1];
+    }
+    // Clear the top row as nothing comes above it
+    activePieceGrid[0] = 0;
+    printGrid();
+}
+
 int main(void) {
-    // Pseudo:
-    // Poll PORTA for movement
-    // Handle the movement
-    // Check if there is a rotation waiting
-    // Handle the rotation
     init();
     __delay_ms(1000);
     while (1) {
-        if (toggle) {
+        if (move_down) {
             // TIMER INTERRUPT OCCURED
-            byte units = displayNumber % 10; // Extract units digit
-            byte tens = displayNumber / 10; // Extract tens digit
-            // Display tens digit on D1
-            for (byte i = 0; i < 4; i++) {
-                displayDigit(displayNumber, i);
-                __delay_ms(50); // Adjust delay as needed for visibility
-            }
-            displayNumber += 1;
-            toggle = 0;
+            moveActivePieceDown();
             counter = 0;
+            move_down = 0;
+        }
+        if (blink) {
+            PORTC ^= activePieceGrid[0];
+            PORTD ^= activePieceGrid[1];
+            PORTE ^= activePieceGrid[2];
+            PORTF ^= activePieceGrid[3];
+            blink = 0;
         }
         if (submit) {
-            spawnShape(2);
-            printGrid();
+            if (can_submit()) {
+                for (int i = 0; i < 4; i++) {
+                    submittedGrid[i] |= activePieceGrid[i];
+                    incrementCurrentPiece();
+                }
+            }
             submit = 0;
         }
     }
