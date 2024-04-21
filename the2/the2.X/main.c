@@ -95,7 +95,7 @@ typedef struct {
 byte activePieceGrid[4];
 byte submittedGrid[4];
 byte submit = 1;
-byte portBPins = 0;
+byte portBPins = PORTB;
 byte rotationFlag = 0;
 byte currentPiece = 0; // 0 for dot, 1 for square, 2 for L
 
@@ -217,7 +217,7 @@ void init() {
     initializeInterrupts();
     initializeTimers();
     initializePorts();
-    spawnShape(0);
+    spawnShape(currentPiece);
     incrementCurrentPiece();
     printGrid();
 }
