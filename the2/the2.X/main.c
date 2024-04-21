@@ -239,9 +239,11 @@ __interrupt(high_priority) void HandleHighInterrupt() {
         byte changedPins = portBPins ^ PORTB;
         portBPins = PORTB;
         if (changedPins & 0b01000000) {
+            __delay_ms(5);
             // RB6: submit button
             submit = 1;
         } else if (changedPins & 0b00100000) {
+            __delay_ms(5);
             // RB5: rotate button
             rotationFlag = 1;
         }
