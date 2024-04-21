@@ -96,6 +96,7 @@ byte activePieceGrid[4];
 byte submittedGrid[4];
 volatile byte submit = 0;
 volatile byte portBPins = 0;
+byte prevG = 0;
 volatile byte rotationFlag = 0;
 byte currentPiece = 0; // 0 for dot, 1 for square, 2 for L
 
@@ -156,6 +157,7 @@ void initializeVariables() {
     LATD = 0x00;
     LATE = 0x00;
     LATF = 0x00;
+    LATG = 0x00;
     LATH = 0x00;
     LATJ = 0x00;
     portBPins = PORTB;
@@ -207,6 +209,7 @@ void initializePorts() {
     TRISF = 0x00; // Set PORTF as output
     TRISJ = 0x00; // Configure all port J pins as outputs
     TRISH = 0x00; // Configure all port H pins as outputs
+    TRISG = 0x00; // Configure all port G pins as outputs
 }
 
 byte digitPatterns[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66,
@@ -229,7 +232,6 @@ void displayDigit(byte num, byte digitIndex) {
         LATH &= ~0b00000100; // Activate D1 (Tens)
     }
 }
-
 // ============================ //
 //   INTERRUPT SERVICE ROUTINE  //
 // ============================ //
@@ -272,12 +274,45 @@ void __interrupt(low_priority) HandleLowInterrupt(void) {
 // ============================ //
 
 void moveActivePieceDown() {
-    // Check if moving down is possible (no collision)
     for (int i = 0; i < 4; i++) {
         if (getXthBit(activePieceGrid[i], 7)) {
             return;
         }
+    }
+    for (int i = 0; i < 4; i++) {
         activePieceGrid[i] = activePieceGrid[i] << 1;
+    }
+    printGrid();
+}
+
+void moveActivePieceRight() {
+    if (activePieceGrid[3] & 0b11111111) {
+        return;
+    }
+    for (int i = 1; i < 4; i++) {
+        activePieceGrid[i] = activePieceGrid[i - 1];
+    }
+    printGrid();
+}
+
+void moveActivePieceLeft() {
+    if (activePieceGrid[0] & 0b11111111) {
+        return;
+    }
+    for (int i = 3; i > 0; i--) {
+        activePieceGrid[i - 1] = activePieceGrid[i];
+    }
+    printGrid();
+}
+
+void moveActivePieceUp() {
+    for (int i = 0; i < 4; i++) {
+        if (getXthBit(activePieceGrid[i], 0)) {
+            return;
+        }
+    }
+    for (int i = 0; i < 4; i++) {
+        activePieceGrid[i] = activePieceGrid[i] >> 1;
     }
     printGrid();
 }
@@ -295,11 +330,13 @@ int main(void) {
         }
         if (move_down) {
             // TIMER INTERRUPT OCCURED
+            __delay_ms(2);
             moveActivePieceDown();
             counter = 0;
             move_down = 0;
         }
         if (submit) {
+            __delay_ms(2);
             if (can_submit()) {
                 for (int i = 0; i < 4; i++) {
                     submittedGrid[i] |= activePieceGrid[i];
@@ -308,6 +345,24 @@ int main(void) {
                 spawnShape(currentPiece);
             }
             submit = 0;
+        }
+        byte movements = prevG ^ PORTG;
+        prevG = PORTG;
+        if (movements & 0b00000001) {
+            // RG0
+            moveActivePieceRight();
+        }
+        if (movements & 0b00000100) {
+            // RG2
+            moveActivePieceUp();
+        }
+        if (movements & 0b00001000) {
+            // RG3
+            moveActivePieceLeft();
+        }
+        if (movements & 0b00010000) {
+            // RG4
+            moveActivePieceRight();
         }
     }
 
