@@ -348,8 +348,9 @@ int main(void) {
             }
             submit = 0;
         }
-        byte movements = prevG ^ PORTG;
-        prevG = PORTG;
+        byte currentG = PORTG;
+        byte movements = (prevG ^ currentG) & currentG;
+        prevG = currentG;
         if (movements & 0b00000001) {
             // RG0
             moveActivePieceRight();
