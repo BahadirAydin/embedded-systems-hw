@@ -234,21 +234,18 @@ void displayDigit(byte num, byte digitIndex) {
 //   INTERRUPT SERVICE ROUTINE  //
 // ============================ //
 
-byte submit_flag = 0;
 __interrupt(high_priority) void HandleHighInterrupt() {
     if (INTCONbits.RBIF) {
         byte changedPins = portBPins ^ PORTB;
         portBPins = PORTB;
         if (changedPins & 0b01000000) {
             // RB6: submit button
-            submit_flag = 1;
+            LATB = 0b00000000;
+            submit = 1
         } else if (changedPins & 0b00100000) {
             // RB5: rotate button
+            LATB = 0b00000000;
             rotationFlag = 1;
-        }
-        if (submit_flag) {
-            submit = 1;
-            submit_flag = 0;
         }
         INTCONbits.RBIF = 0;
     }
