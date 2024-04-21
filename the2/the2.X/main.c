@@ -95,7 +95,7 @@ typedef struct {
 byte activePieceGrid[4];
 byte submittedGrid[4];
 byte submit = 1;
-byte portBPins = PORTB;
+byte portBPins = 0;
 byte rotationFlag = 0;
 byte currentPiece = 0; // 0 for dot, 1 for square, 2 for L
 
@@ -144,21 +144,22 @@ byte can_submit() {
 }
 
 void printGrid() {
-    PORTC = activePieceGrid[0] | submittedGrid[0];
-    PORTD = activePieceGrid[1] | submittedGrid[1];
-    PORTE = activePieceGrid[2] | submittedGrid[2];
-    PORTF = activePieceGrid[3] | submittedGrid[3];
+    LATC = activePieceGrid[0] | submittedGrid[0];
+    LATD = activePieceGrid[1] | submittedGrid[1];
+    LATE = activePieceGrid[2] | submittedGrid[2];
+    LATF = activePieceGrid[3] | submittedGrid[3];
 }
 
 void initializeVariables() {
-    PORTA = 0x00;
-    PORTB = 0x00;
-    PORTC = 0x00;
-    PORTD = 0x00;
-    PORTE = 0x00;
-    PORTF = 0x00;
-    PORTH = 0x00;
-    PORTJ = 0x00;
+    LATA = 0x00;
+    LATB = 0x00;
+    LATC = 0x00;
+    LATD = 0x00;
+    LATE = 0x00;
+    LATF = 0x00;
+    LATH = 0x00;
+    LATJ = 0x00;
+    portBPins = PORTB;
     for (int i = 0; i < 4; i++) {
         activePieceGrid[i] = 0;
         submittedGrid[i] = 0;
