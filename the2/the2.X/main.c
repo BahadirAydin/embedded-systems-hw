@@ -94,9 +94,9 @@ typedef struct {
 
 byte activePieceGrid[4];
 byte submittedGrid[4];
-byte submit = 0;
-byte portBPins = 0;
-byte rotationFlag = 0;
+volatile byte submit = 0;
+volatile byte portBPins = 0;
+volatile byte rotationFlag = 0;
 byte currentPiece = 0; // 0 for dot, 1 for square, 2 for L
 
 // ============================ //
@@ -248,10 +248,10 @@ __interrupt(high_priority) void HandleHighInterrupt() {
         INTCONbits.RBIF = 0;
     }
 }
-byte move_down = 0;
-byte counter = 0;
+volatile byte move_down = 0;
+volatile byte counter = 0;
 byte displayNumber = 0;
-byte blink = 0;
+volatile byte blink = 0;
 void __interrupt(low_priority) HandleLowInterrupt(void) {
 
     if (INTCONbits.TMR0IF) {
