@@ -108,8 +108,14 @@ byte getXthBit(byte row, byte X) { return (row >> X) & 1; }
 void clearXthBit(byte *row, byte X) { *row &= ~(1 << X); }
 
 void incrementCurrentPiece() { currentPiece = (currentPiece + 1) % 3; }
-// initialize any and all global variables
-// do this last
+
+void printGrid() {
+    LATC = activePieceGrid[0] | submittedGrid[0];
+    LATD = activePieceGrid[1] | submittedGrid[1];
+    LATE = activePieceGrid[2] | submittedGrid[2];
+    LATF = activePieceGrid[3] | submittedGrid[3];
+}
+
 void spawnShape(byte shape) {
     activePieceGrid[0] = 0;
     activePieceGrid[1] = 0;
@@ -132,6 +138,7 @@ void spawnShape(byte shape) {
         // Horizontal part
         setXthBit(&activePieceGrid[1], 1);
     }
+    printGrid();
 }
 byte can_submit() {
     for (int i = 0; i < 4; i++) {
@@ -140,13 +147,6 @@ byte can_submit() {
         }
     }
     return 1;
-}
-
-void printGrid() {
-    LATC = activePieceGrid[0] | submittedGrid[0];
-    LATD = activePieceGrid[1] | submittedGrid[1];
-    LATE = activePieceGrid[2] | submittedGrid[2];
-    LATF = activePieceGrid[3] | submittedGrid[3];
 }
 
 void initializeVariables() {
@@ -234,18 +234,21 @@ void displayDigit(byte num, byte digitIndex) {
 //   INTERRUPT SERVICE ROUTINE  //
 // ============================ //
 
+byte submit_flag = 0;
 __interrupt(high_priority) void HandleHighInterrupt() {
     if (INTCONbits.RBIF) {
         byte changedPins = portBPins ^ PORTB;
         portBPins = PORTB;
         if (changedPins & 0b01000000) {
-            __delay_ms(5);
             // RB6: submit button
-            submit = 1;
+            canSubmit = 1;
         } else if (changedPins & 0b00100000) {
-            __delay_ms(5);
             // RB5: rotate button
             rotationFlag = 1;
+        }
+        if (submit_flag = 1) {
+            submit = 1;
+            submit_flag = 0;
         }
         INTCONbits.RBIF = 0;
     }
