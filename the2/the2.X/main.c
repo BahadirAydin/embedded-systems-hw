@@ -241,7 +241,7 @@ __interrupt(high_priority) void HandleHighInterrupt() {
         if (changedPins & 0b01000000) {
             // RB6: submit button
             LATB = 0b00000000;
-            submit = 1
+            submit = 1;
         } else if (changedPins & 0b00100000) {
             // RB5: rotate button
             LATB = 0b00000000;
