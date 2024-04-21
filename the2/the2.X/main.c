@@ -209,7 +209,7 @@ void initializePorts() {
     TRISF = 0x00; // Set PORTF as output
     TRISJ = 0x00; // Configure all port J pins as outputs
     TRISH = 0x00; // Configure all port H pins as outputs
-    TRISG = 0x00; // Configure all port G pins as outputs
+    TRISG = 0b00011101;
 }
 
 byte digitPatterns[10] = {0x3F, 0x06, 0x5B, 0x4F, 0x66,
