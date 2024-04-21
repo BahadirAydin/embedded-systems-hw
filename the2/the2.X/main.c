@@ -289,7 +289,7 @@ void moveActivePieceRight() {
     if (activePieceGrid[3] & 0b11111111) {
         return;
     }
-    for (int i = 1; i < 4; i++) {
+    for (int i = 3; i > 0; i--) {
         activePieceGrid[i] = activePieceGrid[i - 1];
     }
     printGrid();
@@ -299,7 +299,7 @@ void moveActivePieceLeft() {
     if (activePieceGrid[0] & 0b11111111) {
         return;
     }
-    for (int i = 3; i > 0; i--) {
+    for (int i = 1; i < 4; i++) {
         activePieceGrid[i - 1] = activePieceGrid[i];
     }
     printGrid();
