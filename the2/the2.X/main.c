@@ -275,17 +275,12 @@ void __interrupt(low_priority) HandleLowInterrupt(void) {
 
 void moveActivePieceDown() {
     // Check if moving down is possible (no collision)
-    for (int i = 3; i > 0; i--) {
-        if ((activePieceGrid[i - 1] >> 1) & submittedGrid[i]) {
-            // Collision detected, move not possible
+    for (int i = 0; i < 4; i++) {
+        if (getXthBit(activePieceGrid[i], 7)) {
             return;
         }
+        activePieceGrid[i] = activePieceGrid[i] << 1;
     }
-    for (int i = 3; i > 0; i--) {
-        activePieceGrid[i] = activePieceGrid[i - 1];
-    }
-    // Clear the top row as nothing comes above it
-    activePieceGrid[0] = 0;
     printGrid();
 }
 
