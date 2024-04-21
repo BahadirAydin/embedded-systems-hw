@@ -241,12 +241,12 @@ __interrupt(high_priority) void HandleHighInterrupt() {
         portBPins = PORTB;
         if (changedPins & 0b01000000) {
             // RB6: submit button
-            canSubmit = 1;
+            submit_flag = 1;
         } else if (changedPins & 0b00100000) {
             // RB5: rotate button
             rotationFlag = 1;
         }
-        if (submit_flag = 1) {
+        if (submit_flag) {
             submit = 1;
             submit_flag = 0;
         }
