@@ -1,11 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configurationDescriptor version="65">
   <projectmakefile>Makefile</projectmakefile>
+<<<<<<< HEAD
   <defaultConf>0</defaultConf>
   <confs>
     <conf name="Simulate" type="2">
       <platformToolSN></platformToolSN>
       <languageToolchainDir></languageToolchainDir>
+=======
+  <defaultConf>2</defaultConf>
+  <confs>
+    <conf name="Simulate" type="2">
+      <platformToolSN></platformToolSN>
+      <languageToolchainDir>/opt/microchip/xc8/v2.30/bin</languageToolchainDir>
+>>>>>>> 4db241149aec82a8ed98c5bb8e732b0cd81f3341
       <mdbdebugger version="1">
         <placeholder1>place holder 1</placeholder1>
         <placeholder2>place holder 2</placeholder2>
@@ -23,7 +31,11 @@
     </conf>
     <conf name="default" type="2">
       <platformToolSN></platformToolSN>
+<<<<<<< HEAD
       <languageToolchainDir></languageToolchainDir>
+=======
+      <languageToolchainDir>/opt/microchip/xc8/v2.30/bin</languageToolchainDir>
+>>>>>>> 4db241149aec82a8ed98c5bb8e732b0cd81f3341
       <mdbdebugger version="1">
         <placeholder1>place holder 1</placeholder1>
         <placeholder2>place holder 2</placeholder2>
@@ -40,8 +52,13 @@
       </runprofile>
     </conf>
     <conf name="UploadWithPickit3" type="2">
+<<<<<<< HEAD
       <platformToolSN></platformToolSN>
       <languageToolchainDir></languageToolchainDir>
+=======
+      <platformToolSN>:=MPLABComm-USB-Microchip:=&lt;vid>04D8:=&lt;pid>900A:=&lt;rev>0002:=&lt;man>Microchip Technology Inc.:=&lt;prod>PICkit 3:=&lt;sn>BUR133653131:=&lt;drv>x:=&lt;xpt>h:=end</platformToolSN>
+      <languageToolchainDir>/opt/microchip/xc8/v2.30/bin</languageToolchainDir>
+>>>>>>> 4db241149aec82a8ed98c5bb8e732b0cd81f3341
       <mdbdebugger version="1">
         <placeholder1>place holder 1</placeholder1>
         <placeholder2>place holder 2</placeholder2>

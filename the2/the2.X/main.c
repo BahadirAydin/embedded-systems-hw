@@ -2,50 +2,66 @@
 // Do not edit this part!!!!    //
 // ============================ //
 // 0x300001 - CONFIG1H
-#pragma config OSC = HSPLL      // Oscillator Selection bits (HS oscillator,
-                                // PLL enabled (Clock Frequency = 4 x FOSC1))
-#pragma config FCMEN = OFF      // Fail-Safe Clock Monitor Enable bit
-                                // (Fail-Safe Clock Monitor disabled)
-#pragma config IESO = OFF       // Internal/External Oscillator Switchover bit
-                                // (Oscillator Switchover mode disabled)
+#pragma config OSC = HSPLL // Oscillator Selection bits (HS oscillator,
+                           // PLL enabled (Clock Frequency = 4 x FOSC1))
+#pragma config FCMEN = OFF // Fail-Safe Clock Monitor Enable bit
+                           // (Fail-Safe Clock Monitor disabled)
+#pragma config IESO = OFF  // Internal/External Oscillator Switchover bit
+                           // (Oscillator Switchover mode disabled)
 // 0x300002 - CONFIG2L
-#pragma config PWRT = OFF       // Power-up Timer Enable bit (PWRT disabled)
-#pragma config BOREN = OFF      // Brown-out Reset Enable bits (Brown-out
-                                // Reset disabled in hardware and software)
+#pragma config PWRT = OFF  // Power-up Timer Enable bit (PWRT disabled)
+#pragma config BOREN = OFF // Brown-out Reset Enable bits (Brown-out
+                           // Reset disabled in hardware and software)
 // 0x300003 - CONFIG1H
-#pragma config WDT = OFF        // Watchdog Timer Enable bit
-                                // (WDT disabled (control is placed on the SWDTEN bit))
+#pragma config WDT =                                                           \
+    OFF // Watchdog Timer Enable bit
+        // (WDT disabled (control is placed on the SWDTEN bit))
 // 0x300004 - CONFIG3L
 // 0x300005 - CONFIG3H
-#pragma config LPT1OSC = OFF    // Low-Power Timer1 Oscillator Enable bit
-                                // (Timer1 configured for higher power operation)
-#pragma config MCLRE = ON       // MCLR Pin Enable bit (MCLR pin enabled;
-                                // RE3 input pin disabled)
+#pragma config LPT1OSC = OFF // Low-Power Timer1 Oscillator Enable bit
+                             // (Timer1 configured for higher power operation)
+#pragma config MCLRE = ON    // MCLR Pin Enable bit (MCLR pin enabled;
+                             // RE3 input pin disabled)
 // 0x300006 - CONFIG4L
-#pragma config LVP = OFF        // Single-Supply ICSP Enable bit (Single-Supply
-                                // ICSP disabled)
-#pragma config XINST = OFF      // Extended Instruction Set Enable bit
-                                // (Instruction set extension and Indexed
-                                // Addressing mode disabled (Legacy mode))
+#pragma config LVP = OFF   // Single-Supply ICSP Enable bit (Single-Supply
+                           // ICSP disabled)
+#pragma config XINST = OFF // Extended Instruction Set Enable bit
+                           // (Instruction set extension and Indexed
+                           // Addressing mode disabled (Legacy mode))
 
-#pragma config DEBUG = OFF      // Disable In-Circuit Debugger
+#pragma config DEBUG = OFF // Disable In-Circuit Debugger
 
 #define KHZ 1000
 #define MHZ (KHZ * KHZ)
 #define _XTAL_FREQ 40 * MHZ
+#include <xc.h>
+
+#define SEG_A   LATJbits.LATJ0
+#define SEG_B   LATJbits.LATJ1
+#define SEG_C   LATJbits.LATJ2
+#define SEG_D   LATJbits.LATJ3
+#define SEG_E   LATJbits.LATJ4
+#define SEG_F   LATJbits.LATJ5
+#define SEG_G   LATJbits.LATJ6
+#define SEG_DP  LATJbits.LATJ7
+
+#define DIG_D0  LATHbits.LATH3
+#define DIG_D1  LATHbits.LATH2
+#define DIG_D2  LATHbits.LATH1
+#define DIG_D3  LATHbits.LATH0
 
 // ============================ //
 //             End              //
 // ============================ //
-
-#include <xc.h>
 
 
 // ============================ //
 //          HEADERS             //
 // ============================ //
 
-void createNewPiece();
+#define ROWS 4
+#define COLS 8
+
 
 // ============================ //
 //           NOTES              //
@@ -63,24 +79,51 @@ void createNewPiece();
 //        DEFINITIONS           //
 // ============================ //
 
-enum PieceTypes{
-    DOT = 0,
-    SQUARE = 1,
-    L = 2
+enum PieceTypes {
+    DOT = 0, SQUARE = 1, L = 2
 };
 
-// What I thought while creating this piece is that 
+enum DIGITS {
+    D0 = 0, D1 = 1, D2 = 2, D3 = 3
+};
+
+
+typedef unsigned char byte;
+
+typedef struct {
+    byte x;
+    byte y;
+} Point;
+
+typedef struct {
+    Point blocks[3];  // 'L' shape has 3 orientations, but can fit in a 4-block array
+    byte orientation;
+} LShape;
+
+typedef struct {
+    Point blocks[4];  // Square shape (2x2)
+} Square;
+
+typedef struct {
+    Point blocks[1];  // Dot shape (1x1)
+} Dot;
+
+byte submit = 1;
+
+// What I thought while creating this piece is that
 // boundary checking with 4 coordinates would be very easy
 // although it might store unnecessary variables (such as
-// in the case of piece 1) we can just do the rotation and 
+// in the case of piece 1) we can just do the rotation and
 // shift operation by swapping variables very easily.
-struct current_piece{
-    unsigned char left_coord;
+struct current_piece {
+    
     unsigned char right_coord;
     unsigned char top_coord;
     unsigned char bottom_coord;
     enum PieceTypes current_piece_type;
-    unsigned char rotation_index;   // 1 means initial condition (empty dot on bottom left) and rotates counterclockwise with each increment
+    unsigned char
+    rotation_index; // 1 means initial condition (empty dot on bottom left)
+    // and rotates counterclockwise with each increment
 };
 
 // ============================ //
@@ -88,9 +131,23 @@ struct current_piece{
 // ============================ //
 
 struct current_piece cp;
-unsigned char grid[8][4];       // TODO: enable CCI and make this one's type bit
+byte grid[4]; // TODO: enable CCI and make this one's type bit
+
 unsigned char displayValues[4]; // left to right display values
-unsigned char rotationFlag;     // TODO: enable CCI and make this one's type bit
+unsigned char rotationFlag; // TODO: enable CCI and make this one's type bit
+
+
+void setXthBit(byte *row, byte X){
+    *row |= (1 << X);
+}
+
+byte getXthBit(byte row, byte X) {
+    return (row >> X) & 1;
+}
+
+void clearXthBit(byte *row, byte X){
+    *row &= ~(1 << X);
+}
 
 // ============================ //
 //          FUNCTIONS           //
@@ -98,101 +155,190 @@ unsigned char rotationFlag;     // TODO: enable CCI and make this one's type bit
 
 // initialize any and all global variables
 // do this last
-void initializeVariables(){
-    
+void spawnShape(byte shape) {
+    // Clear the grid first
+    for (int i = 0; i < 4; i++) {
+        grid[i] = 0;
+    }
+
+    if (shape == 0) {
+        // DOT at the center top
+        setXthBit(&grid[0], 0);  // Assuming position (0,1) for Dot
+    } else if (shape == 1) {
+        // L shape
+        // Vertical part
+        setXthBit(&grid[0], 0);
+        setXthBit(&grid[1], 0);
+        // Horizontal part
+        setXthBit(&grid[1], 1);
+    } else if (shape == 2) {
+        // Square shape
+        setXthBit(&grid[0], 0);
+        setXthBit(&grid[0], 1);
+        setXthBit(&grid[1], 0);
+        setXthBit(&grid[1], 1);
+    }
 }
 
+void printGrid(){
+    PORTC = grid[0];
+    PORTD = grid[1];
+    PORTE = grid[2];
+    PORTF = grid[3];
+}
+
+
+void printCurrentShape(){
+    //TODO
+}
+
+
+
+
+
+
+void initializeVariables() {
+    PORTA = 0x00;
+    PORTB = 0x00;
+    PORTC = 0x00;
+    PORTD = 0x00;
+    PORTE = 0x00;
+    PORTF = 0x00;
+    PORTH = 0x00;
+    PORTJ = 0x00;
+    // Loop through all grid cells and set them to zero
+
+    for (byte j = 0; j < 4; j++){
+        grid[j] = 0;
+    }
+}
 // set up interrupts
 // rb should fire high prio,
 // timer0 should fire low prio
-void initializeInterrupts(){
-    RCON = 0b10000000;  // enable priority interrupts
-    INTCON = 0b11101000; // enable low, high prio, timer0 and rbChange
-    INTCON2 = 0b10000001; // tmor0 low interrupt, rb high interrupt, 
-    // INTCON3 is for external interrupts (INT0 etc)
-    // Don't think we will be using PIE and PIR registers
+void initializeInterrupts() {
+    // Disable all interrupts during configuration
+    INTCONbits.GIE = 0;
+
+    // Priority levels on interrupts enabled
+    RCONbits.IPEN = 1;
+
+    // Reset interrupt flags
+    INTCONbits.TMR0IF = 0; // Clear Timer0 interrupt flag
+    INTCONbits.RBIF = 0; // Clear PORTB change interrupt flag
+
+    // Configure Timer0 interrupt
+    INTCONbits.TMR0IE = 1; // Enable Timer0 interrupt
+    INTCON2bits.TMR0IP = 0; // Set Timer0 interrupt to low priority
+
+    // Configure PORTB change interrupt
+    INTCONbits.RBIE = 1; // Enable RB port change interrupt
+    INTCON2bits.RBIP = 1; // Set RB port change interrupt to high priority
+
+    // Enable low priority interrupt
+    INTCONbits.PEIE = 1;
+
+    // Re-enable global interrupts
+    INTCONbits.GIE = 1;
 }
 
 // initialize and start timers
-void initializeTimers(){
-    
+void initializeTimers() {
+    T0CON = 0b00000101; // 16-bit mode, pre-scaler 1:64
+    TMR0H = 0x65; // High byte of 26000
+    TMR0L = 0x90; // Low byte of 26000
+    T0CONbits.TMR0ON = 1; // Start Timer0
 }
 
-void initializePorts(){
-    
+void initializePorts() {
+    TRISB = 0b01101111;
+    TRISC = 0x00; // Set PORTC as output
+    TRISD = 0x00; // Set PORTD as output
+    TRISE = 0x00; // Set PORTE as output
+    TRISF = 0x00; // Set PORTF as output
+    TRISJ = 0x00; // Configure all port J pins as outputs
+    TRISH = 0x00; // Configure all port H pins as outputs
 }
 
-void createNewPiece(){
-    static unsigned char pieceTypeCounter = 0;  // TODO: see if you can transform this into an enum
-    cp.left_coord = 1;
-    cp.top_coord = 1;
-    cp.rotation_index = 1;
-    cp.current_piece_type = pieceTypeCounter;
-    switch(pieceTypeCounter++){
-        case 0: // dot
-            cp.bottom_coord = 1;
-            cp.left_coord = 1;
-            break;
-        case 1: // square       
-            // fall down
-        case 2: // L
-            cp.bottom_coord = 2;
-            cp.right_coord = 2;
-            break;
-    }
-    if(pieceTypeCounter > 3)
-        pieceTypeCounter = 1;
-    //TODO: reset the timer, and flicking variable
-}
+// void createNewPiece() {
+//     static unsigned char pieceTypeCounter = 0; // TODO: see if you can transform this into an enum
+//     cp.left_coord = 1;
+//     cp.top_coord = 1;
+//     cp.rotation_index = 1;
+//     cp.current_piece_type = pieceTypeCounter;
 
-void init(){
-    __delay_ms(1000);   // wait for one second
+//     if (pieceTypeCounter == 0) { // dot
+//         cp.bottom_coord = 1;
+//         cp.left_coord = 1;
+//     } else if (pieceTypeCounter == 1 || pieceTypeCounter == 2) { // square or L
+//         cp.bottom_coord = 2;
+//         cp.right_coord = 2;
+//     }
+
+//     pieceTypeCounter++;
+//     if (pieceTypeCounter > 3) {
+//         pieceTypeCounter = 1; // reset pieceTypeCounter after it exceeds the types
+//     }
+
+//     // TODO: reset the timer, and flicking variable
+// }
+
+byte digitPatterns[10] = {
+    0x3F,
+    0x06,
+    0x5B,
+    0x4F,
+    0x66,
+    0x6D,
+    0x7D,
+    0x07,
+    0x7F,
+    0x6F
+};
+
+void init() {
     initializeVariables();
     initializeInterrupts();
     initializeTimers();
     initializePorts();
-    
-    createNewPiece();
 }
 
+// void movePieceDown() {
+//     if (cp.bottom_coord < 8) {
+//         cp.top_coord++;
+//         cp.bottom_coord++;
+//     }
+// }
 
+// void movePieceUp() {
+//     if (cp.top_coord > 1) {
+//         cp.top_coord--;
+//         cp.bottom_coord--;
+//     }
+// }
 
-void movePieceDown(){
-    if(cp.bottom_coord < 8){
-        cp.top_coord++;
-        cp.bottom_coord++;
-    }
-}
+// void movePieceLeft() {
+//     if (cp.left_coord > 1) {
+//         cp.left_coord--;
+//         cp.right_coord--;
+//     }
+// }
 
-void movePieceUp(){
-    if(cp.top_coord > 1){
-        cp.top_coord--;
-        cp.bottom_coord--;
-    }
-}
+// void movePieceRight() {
+//     if (cp.right_coord < 4) {
+//         cp.left_coord++;
+//         cp.right_coord++;
+//     }
+// }
 
-void movePieceLeft(){
-    if(cp.left_coord > 1){
-        cp.left_coord--;
-        cp.right_coord--;
-    }
-}
+// void rotatePiece() {
+//     cp.rotation_index++;
+//     if (cp.rotation_index > 4)
+//         cp.rotation_index = 1;
+// }
 
-void movePieceRight(){
-    if(cp.right_coord < 4){
-        cp.left_coord++;
-        cp.right_coord++;
-    }
-}
-
-void rotatePiece(){
-    cp.rotation_index++;
-    if(cp.rotation_index > 4)
-        cp.rotation_index = 1;
-}
-
-void writeTo7SegmentDisplay(const unsigned char val){
-    static const unsigned char sevenSegmentDisplayValues[] = {
+void writeTo7SegmentDisplay(const unsigned char val) {
+    static
+    const unsigned char sevenSegmentDisplayValues[] = {
         0x3f,
         0x06,
         0x5b,
@@ -204,46 +350,59 @@ void writeTo7SegmentDisplay(const unsigned char val){
         0x7F,
         0x67
     };
-    displayValues[2] = sevenSegmentDisplayValues[val/10];
-    displayValues[3] = sevenSegmentDisplayValues[val%10];
+    displayValues[2] = sevenSegmentDisplayValues[val / 10];
+    displayValues[3] = sevenSegmentDisplayValues[val % 10];
 }
 
 // 7-sd display values are predetermined
 // only iterate through the values
-void update7SegmentDisplay(){
+void update7SegmentDisplay() {
     static unsigned char display_iterator = 0;
-    static const unsigned char display_values[] = {1, 5, 8, 9, 13, 16, 17, 21, 24, 25, 29, 32};
+    static
+    const unsigned char display_values[] = {
+        1,
+        5,
+        8,
+        9,
+        13,
+        16,
+        17,
+        21,
+        24,
+        25,
+        29,
+        32
+    };
     writeTo7SegmentDisplay(display_values[display_iterator++]);
 }
 
 // successful submission
-void submitPiece(){
-    grid[cp.bottom_coord][cp.left_coord] = 1;
-    grid[cp.top_coord][cp.left_coord] = 1;
-    grid[cp.top_coord][cp.right_coord] = 1;
-    grid[cp.bottom_coord][cp.right_coord] = 1;
-    if(cp.current_piece_type == 2){
-        switch(cp.rotation_index){
-            case 1:
-                grid[cp.bottom_coord][cp.left_coord] = 0;
-                break;
-            case 2:
-                grid[cp.top_coord][cp.left_coord] = 0;
-                break;
-            case 3:
-                grid[cp.top_coord][cp.right_coord] = 0;
-                break;
-            case 4:
-                grid[cp.bottom_coord][cp.right_coord] = 0;
-                break;
-        }
-    }
-    
-    update7SegmentDisplay();
-    
-    createNewPiece();
-    
-}
+// void submitPiece() {
+//     setXthBit(grid[cp.bottom_coord],cp.left_coord);
+//     setXthBit(grid[cp.top_coord],cp.left_coord);
+//     setXthBit(grid[cp.top_coord],cp.right_coord);
+//     setXthBit(grid[cp.bottom_coord],cp.right_coord);
+//     if (cp.current_piece_type == 2) {
+//         switch (cp.rotation_index) {
+//         case 1:
+//             getXthBit(grid[cp.bottom_coord],cp.left_coord) == 0;
+//             break;
+//         case 2:
+//             getXthBit(grid[cp.top_coord],cp.left_coord) == 0;
+//             break;
+//         case 3:
+//             getXthBit(grid[cp.top_coord],cp.right_coord) == 0;
+//             break;
+//         case 4:
+//             getXthBit(grid[cp.bottom_coord],cp.right_coord) == 0;
+//             break;
+//         }
+//     }
+
+//     update7SegmentDisplay();
+
+//     createNewPiece();
+// }
 
 // check 4 boundaries of each piece
 // if any is occupied, decrement available pixels by one
@@ -252,44 +411,48 @@ void submitPiece(){
 // if available pixels is still 4 at the end, it is submittable.
 // since this is called in a high priority interrupt, it is certain
 // that it will not be interrupted.
-void trySubmitPiece(){
-    unsigned char available_pixels = 4;   
-    if(grid[cp.bottom_coord][cp.left_coord] == 0)
-        available_pixels--;
-    if(grid[cp.top_coord][cp.left_coord] == 0)
-        available_pixels--;
-    if(grid[cp.bottom_coord][cp.right_coord] == 0)
-        available_pixels--;
-    if(grid[cp.top_coord][cp.right_coord] == 0)
-        available_pixels--;
-    if(cp.current_piece_type == L){
-        switch(cp.rotation_index){
-            case 1:
-                if(grid[cp.bottom_coord][cp.left_coord] == 1)
-                    available_pixels++;
-                break;
-            case 2:
-                if(grid[cp.top_coord][cp.left_coord] == 1)
-                    available_pixels++;
-                break;
-            case 3:
-                if(grid[cp.top_coord][cp.right_coord] == 1)
-                    available_pixels++;
-                break;
-            case 4:
-                if(grid[cp.bottom_coord][cp.right_coord] == 1)
-                    available_pixels++;
-                break;
-        }
-    }
-    if(available_pixels == 4)
-        submitPiece();
-}
+// void trySubmitPiece() {
+//     unsigned char available_pixels = 4;
 
-// This will probably create a problem.
-// Last year's homework on 7-sd
-void lightUpSevenSegmentDisplay(){
-    1;
+//     // Use getXthBit to check if pixels are available
+//     if (getXthBit(grid[cp.bottom_coord], cp.left_coord) == 0)
+//         available_pixels--;
+//     if (getXthBit(grid[cp.top_coord], cp.left_coord) == 0)
+//         available_pixels--;
+//     if (getXthBit(grid[cp.bottom_coord], cp.right_coord) == 0)
+//         available_pixels--;
+//     if (getXthBit(grid[cp.top_coord], cp.right_coord) == 0)
+//         available_pixels--;
+
+//     if (cp.current_piece_type == L) {
+//         if (cp.rotation_index == 1) {
+//             if (getXthBit(grid[cp.bottom_coord], cp.left_coord) == 1)
+//                 available_pixels++;
+//         } else if (cp.rotation_index == 2) {
+//             if (getXthBit(grid[cp.top_coord], cp.left_coord) == 1)
+//                 available_pixels++;
+//         } else if (cp.rotation_index == 3) {
+//             if (getXthBit(grid[cp.top_coord], cp.right_coord) == 1)
+//                 available_pixels++;
+//         } else if (cp.rotation_index == 4) {
+//             if (getXthBit(grid[cp.bottom_coord], cp.right_coord) == 1)
+//                 available_pixels++;
+//         }
+//     }
+
+//     if (available_pixels == 4)
+//         submitPiece();
+// }
+
+
+void displayDigit(byte num, byte digitIndex) {
+    PORTJ = digitPatterns[num]; // Send segment pattern to PORTJ
+    PORTH = 0xFF; // Turn off all digits (common anode: HIGH = OFF)
+    if (digitIndex == 0) {
+        PORTH &= ~0b00001000; // Activate D0 (Units)
+    } else if (digitIndex == 1) {
+        PORTH &= ~0b00000100; // Activate D1 (Tens)
+    }
 }
 
 // ============================ //
@@ -298,30 +461,67 @@ void lightUpSevenSegmentDisplay(){
 
 // Implement ONLY rb interrupts as high
 // because a high interrupt may intercept a low interrupt routine
-// we should still register if user presses RB when the timer0 interrupt is going on
+// we should still register if user presses RB when the timer0 interrupt is
+// going on
 __interrupt(high_priority)
-void HandleHighInterrupt()
-{
-    // High ISR
+void HandleHighInterrupt() {
+    if (INTCONbits.RBIF) {
+        INTCONbits.RBIF = 0;
+    }
 }
 // Implement ONLY timer0 interrupts as low
 // because a high interrupt may intercept a low interrupt routine
-// we should still register if user presses RB when the timer0 interrupt is going on
-__interrupt(low_priority)
-void HandleLowInterrupt(){
-    // Low ISR
+// we should still register if user presses RB when the timer0 interrupt is
+// going on
+byte toggle = 0;
+unsigned char counter = 0;
+unsigned char displayNumber = 0;
+void __interrupt(low_priority) HandleLowInterrupt(void) {
+    if (INTCONbits.TMR0IF) {
+        TMR0H = 0x67; // High byte of 26000
+        TMR0L = 0x75; // Low byte of 26000
+        INTCONbits.TMR0IF = 0; // Clear Timer0 interrupt flag
+
+        if (counter == 4) {
+            toggle = 1;
+        } else {
+            counter++;
+        }
+        // TODO: active piece blink
+    }
 }
 // ============================ //
 //            MAIN              //
 // ============================ //
-int main(void)
-{
+
+int main(void) {
     // Pseudo:
     // Poll PORTA for movement
     // Handle the movement
     // Check if there is a rotation waiting
     // Handle the rotation
-    lightUpSevenSegmentDisplay();
-    
+    init();
+    __delay_ms(1000);
+    while (1) {
+        if (toggle) {
+            // TIMER INTERRUPT OCCURED
+            byte units = displayNumber % 10; // Extract units digit
+            byte tens = displayNumber / 10; // Extract tens digit
+            // Display tens digit on D1
+            for (byte i = 0; i < 4; i++) {
+                displayDigit(displayNumber, i);
+                __delay_ms(50); // Adjust delay as needed for visibility
+            }
+            displayNumber += 1;
+            toggle = 0;
+            counter = 0;
+        }
+        if (submit) {
+            spawnShape(2);
+            printGrid();
+            submit = 0;
+        }
+    }
+
     return 1;
 }

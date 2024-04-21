@@ -34,7 +34,11 @@
         <platformTool>Simulator</platformTool>
         <languageToolchain>XC8</languageToolchain>
         <languageToolchainVersion>2.30</languageToolchainVersion>
+<<<<<<< HEAD
         <platform>3</platform>
+=======
+        <platform>2</platform>
+>>>>>>> 4db241149aec82a8ed98c5bb8e732b0cd81f3341
       </toolsSet>
       <packs>
         <pack name="PIC18Fxxxx_DFP" vendor="Microchip" version="1.2.26"/>
@@ -1273,10 +1277,17 @@
         <targetDevice>PIC18F8722</targetDevice>
         <targetHeader></targetHeader>
         <targetPluginBoard></targetPluginBoard>
+<<<<<<< HEAD
         <platformTool>noID</platformTool>
         <languageToolchain>XC8</languageToolchain>
         <languageToolchainVersion>2.30</languageToolchainVersion>
         <platform>3</platform>
+=======
+        <platformTool>PICkit3PlatformTool</platformTool>
+        <languageToolchain>XC8</languageToolchain>
+        <languageToolchainVersion>2.30</languageToolchainVersion>
+        <platform>2</platform>
+>>>>>>> 4db241149aec82a8ed98c5bb8e732b0cd81f3341
       </toolsSet>
       <packs>
         <pack name="PIC18Fxxxx_DFP" vendor="Microchip" version="1.2.26"/>
@@ -1396,6 +1407,10 @@
                   value="Press to browse for a specific firmware version"/>
         <property key="ToolFirmwareOption.UseLatestFirmware" value="true"/>
         <property key="debugoptions.useswbreakpoints" value="false"/>
+<<<<<<< HEAD
+=======
+        <property key="firmware.download.all" value="false"/>
+>>>>>>> 4db241149aec82a8ed98c5bb8e732b0cd81f3341
         <property key="hwtoolclock.frcindebug" value="false"/>
         <property key="memories.aux" value="false"/>
         <property key="memories.bootflash" value="true"/>
