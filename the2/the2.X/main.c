@@ -217,7 +217,8 @@ void init() {
     initializeInterrupts();
     initializeTimers();
     initializePorts();
-    spawnShape();
+    spawnShape(0);
+    incrementCurrentPiece();
     printGrid();
 }
 void displayDigit(byte num, byte digitIndex) {
