@@ -360,11 +360,11 @@ int main(void) {
         }
         if (movements & 0b00001000) {
             // RG3
-            moveActivePieceLeft();
+            moveActivePieceDown();
         }
         if (movements & 0b00010000) {
             // RG4
-            moveActivePieceRight();
+            moveActivePieceLeft();
         }
     }
 
