@@ -65,12 +65,11 @@
 //           NOTES              //
 // ============================ //
 /*
- *  -The coordinate system is as follows:
- *      Top-left is 1,1
- *      Bottommost row is 8
- *      Rightmost column is 4
- *  -Rotation index of the L piece specifies its empty dot. 1 is bottom left,
- *  2 is top left, 3 is top right, 4 is bottom left
+ *      Kodu okudugum kadariyla eger blinking'den dolayi aktif parcanin isigi
+ * sonmusse ve o parca hareket ettirilirse yeniden yaniyor gibime geldi, ama
+ * runlayamadigimdan emin olamadim.
+ * 
+ * 
  */
 
 // ============================ //
@@ -245,8 +244,8 @@ void displayDigit(byte num, byte digitIndex) {
 
 __interrupt(high_priority) void HandleHighInterrupt() {
     if (INTCONbits.RBIF) {
-        byte changedPins = portBPins ^ PORTB;
         __delay_ms(5);      // manual schmitt trigger
+        byte changedPins = portBPins ^ PORTB;
         portBPins = PORTB;
         if (changedPins & 0b01000000) {
             // RB6: submit button
