@@ -274,6 +274,13 @@ __interrupt(high_priority) void HandleHighInterrupt() {
 }
 volatile byte move_down = 0;
 volatile byte counter = 0;
+
+void resetTimerAndCounter(){
+    TMR0H = 0x67;
+    TMR0L = 0x75;
+    counter = 0;
+}
+
 byte displayNumber = 0;
 volatile byte blink = 0;
 void __interrupt(low_priority) HandleLowInterrupt(void) {
@@ -387,6 +394,7 @@ int main(void) {
                 spawnShape(currentPiece);
                 update7SegmentDisplay();
                 refresh7SegmentDisplay();
+                resetTimerAndCounter();
             }
             submit = 0;
         }
