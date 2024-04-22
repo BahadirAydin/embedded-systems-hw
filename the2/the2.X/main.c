@@ -91,15 +91,21 @@ typedef struct {
 //          GLOBALS             //
 // ============================ //
 
+void reset(){
+    asm("reset");
+}
+
 byte activePieceGrid[4];
 byte submittedGrid[4];
 volatile byte submit = 0;
 volatile byte portBPins = 0;
 byte prevG = 0;
 volatile byte rotationFlag = 0;
+byte rotationIndex = 0;
 byte currentPiece = 0; // 0 for dot, 1 for square, 2 for L
-const byte displayValues[] = {1, 5, 8, 9, 13, 16, 17, 21, 24, 25, 29, 32};
+const byte displayValues[] = {0, 1, 5, 8, 9, 13, 16, 17, 21, 24, 25, 29, 32};
 byte displayIterator = 0;
+Point topLeft = {.x = 0, .y = 0};
 // ============================ //
 //          FUNCTIONS           //
 // ============================ //
@@ -118,6 +124,9 @@ void printGrid() {
 }
 
 void spawnShape(byte shape) {
+    topLeft.x = 0;
+    topLeft.y = 0;
+    rotationIndex = 0;
     activePieceGrid[0] = 0;
     activePieceGrid[1] = 0;
     activePieceGrid[2] = 0;
@@ -202,7 +211,8 @@ void initializeTimers() {
 }
 
 void initializePorts() {
-    TRISB = 0b01101111;
+    TRISA = 0x00; // Debug output from PORTA
+    TRISB = 0b11001111;
     TRISC = 0x00; // Set PORTC as output
     TRISD = 0x00; // Set PORTD as output
     TRISE = 0x00; // Set PORTE as output
@@ -225,18 +235,22 @@ void init() {
 }
 void displayDigit(byte num, byte digitIndex) {
     LATJ = 0;                   // CLear latJ
-    LATH = 0xFF;               // Turn off all digits (common anode: HIGH = OFF)
     if (digitIndex == 0) {  // birler
-        LATH &= ~0b00001000; // Activate D0 (Units)
+        LATH = 0b00001000; // Activate D0 (Units)
+        __delay_ms(1);              // Change this to adjust brightness
     } else if (digitIndex == 1) {   // onlar
-        LATH &= ~0b00000100; // Activate D1 (Tens)
-    }else if (digitIndex == 1) {   // yuzler
-        LATH &= ~0b00000010; // Activate D2 
-    }else if (digitIndex == 1) {   // binler
-        LATH &= ~0b00000001; // Activate D3 
-    }
-    LATJ = digitPatterns[num];
+        LATH = 0b00000100; // Activate D1 (Tens)
+        __delay_ms(1);              // Change this to adjust brightness
+    }else if (digitIndex == 2) {   // yuzler
+        LATH = 0b00000010; // Activate D2 
+        __delay_ms(1);              // Change this to adjust brightness
+    }else if (digitIndex == 3) {   // binler
+        LATH = 0b00000001; // Activate D3 
     __delay_ms(1);              // Change this to adjust brightness
+        }
+    LATJ = num;
+    __delay_ms(10);              // Change this to adjust brightness
+    LATH = 0;
 }
 // ============================ //
 //   INTERRUPT SERVICE ROUTINE  //
@@ -244,14 +258,15 @@ void displayDigit(byte num, byte digitIndex) {
 
 __interrupt(high_priority) void HandleHighInterrupt() {
     if (INTCONbits.RBIF) {
-        __delay_ms(5);      // manual schmitt trigger
-        byte changedPins = portBPins ^ PORTB;
-        portBPins = PORTB;
+        __delay_ms(50);      // manual schmitt trigger
+        byte portBRead = PORTB;
+        byte changedPins = (portBPins ^ portBRead) & portBRead;
+        portBPins = portBRead;
         if (changedPins & 0b01000000) {
             // RB6: submit button
             submit = 1;
-        } else if (changedPins & 0b00100000) {
-            // RB5: rotate button
+        } else if (changedPins & 0b10000000) {
+            // RB7: rotate button
             rotationFlag = 1;
         }
         INTCONbits.RBIF = 0;
@@ -289,6 +304,7 @@ void moveActivePieceDown() {
     for (int i = 0; i < 4; i++) {
         activePieceGrid[i] = activePieceGrid[i] << 1;
     }
+    topLeft.y++;
     printGrid();
 }
 
@@ -300,6 +316,7 @@ void moveActivePieceRight() {
         activePieceGrid[i] = activePieceGrid[i - 1];
     }
     activePieceGrid[0] = 0;
+    topLeft.x++;
     printGrid();
 }
 
@@ -311,6 +328,7 @@ void moveActivePieceLeft() {
         activePieceGrid[i - 1] = activePieceGrid[i];
     }
     activePieceGrid[3] = 0;
+    topLeft.x--;
     printGrid();
 }
 
@@ -323,18 +341,22 @@ void moveActivePieceUp() {
     for (int i = 0; i < 4; i++) {
         activePieceGrid[i] = activePieceGrid[i] >> 1;
     }
+    topLeft.y--;
     printGrid();
 }
 
 void refresh7SegmentDisplay(){
-    displayDigit(0, D3);                                    // binler
-    displayDigit(0, D2);                                    // yuzler
-    displayDigit(displayValues[displayIterator] / 10, D1);  // onlar
-    displayDigit(displayValues[displayIterator] % 10, D0);  // birler
+    displayDigit(0x3F, D3);                                    // binler
+    displayDigit(0x3F, D2);                                    
+    displayDigit(digitPatterns[displayValues[displayIterator] / 10], D1);                                    
+    displayDigit(digitPatterns[displayValues[displayIterator] % 10], D0);                                    
 }
 
 void update7SegmentDisplay(){
-    displayIterator++;
+    ++displayIterator;
+    if((displayIterator) == 12){
+        reset();
+    }
 }
 
 int main(void) {
@@ -386,6 +408,34 @@ int main(void) {
         if (movements & 0b00010000) {
             // RG4
             moveActivePieceLeft();
+        }
+        if(rotationFlag){
+            rotationFlag = 0;
+            
+            if(currentPiece == 2){
+                ++rotationIndex;
+                rotationIndex = (rotationIndex)%4;
+                if(rotationIndex == 0){
+                    clearXthBit(&activePieceGrid[topLeft.x], topLeft.y+1);
+                    setXthBit(&activePieceGrid[topLeft.x+1], topLeft.y+1);
+                }
+                else if(rotationIndex == 1){
+                    clearXthBit(&activePieceGrid[topLeft.x], topLeft.y);
+                    setXthBit(&activePieceGrid[topLeft.x], topLeft.y+1);
+                }
+                else if(rotationIndex == 2){
+                    clearXthBit(&activePieceGrid[topLeft.x+1], topLeft.y);
+                    setXthBit(&activePieceGrid[topLeft.x], topLeft.y);
+                }
+                else if(rotationIndex == 3){
+                    clearXthBit(&activePieceGrid[topLeft.x+1], topLeft.y+1);
+                    setXthBit(&activePieceGrid[topLeft.x+1], topLeft.y);
+                }
+                
+                
+                
+                printGrid();
+            }
         }
         refresh7SegmentDisplay();       // periodic refresh
     }
