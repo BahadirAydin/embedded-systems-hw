@@ -54,15 +54,24 @@ void __interrupt(high_priority) highPriorityISR(void) {
   }
 }
 
-void init_int() {
+void init_usart() {
+  unsigned int brg = 21; // (40000000 / (16 * 115200));
+  SPBRG1 = brg;
+}
+
+void init_ports() {
+    TRISCbits.RC7 = 1; 
+	TRISCbits.RC6 = 0;
+}
+
+void init_interrupterrupt() {
 
   /* configure I/O ports */
   TRISCbits.RC7 = 1; // TX1 and RX1 pin configuration
   TRISCbits.RC6 = 0;
 
   /* configure USART transmitter/receiver */
-  TXSTA1 =
-      0x04; // (= 00000100) 8-bit transmit, transmitter NOT enabled,TXSTA1.TXEN
+  TXSTA1 = 0x04; // (= 00000100) 8-bit transmit, transmitter NOT enabled,TXSTA1.TXEN
             // not enabled! asynchronous, high speed mode
   RCSTA1 = 0x90; // (= 10010000) 8-bit receiver, receiver enabled,
                  // continuous receive, serial port enabled RCSTA.CREN = 1
@@ -80,7 +89,7 @@ void init_int() {
 }
 
 void main(void) {
-  init_int();
+  init_interrupterrupt();
   while (1) {
   }
   return;
