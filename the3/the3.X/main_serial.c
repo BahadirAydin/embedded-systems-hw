@@ -27,11 +27,9 @@ inline void enable_rxtx(void) {
 void __interrupt(high_priority) highPriorityISR(void) {
   if (PIR1bits.RC1IF == 1) {
     char rcvd_chr = RCREG1;
-    PIR1bits.RC1IF = 0;
 
     if (rcvd_chr == '$') {
       message_started = 1;
-      buffer_index = 0;
     }
 
     if (message_started) {
@@ -40,6 +38,7 @@ void __interrupt(high_priority) highPriorityISR(void) {
         buffer[buffer_index] = '\0'; // Null-terminate the string
         // Process the received message here
         // For example, you can print it or set a flag to indicate a new message is ready
+        PIR1bits.RC1IF = 0;
       } else if (buffer_index < BUFFER_SIZE - 1) {
         buffer[buffer_index++] = rcvd_chr;
       } else {
@@ -88,9 +87,7 @@ void main(void) {
   init_usart();
   init_interrupt();
   while (1) {
-    if (!message_started && buffer_index > 0) {
-      buffer_index = 0;
-    }
+
   }
   return;
 }
