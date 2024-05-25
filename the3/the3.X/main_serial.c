@@ -64,7 +64,7 @@ void init_ports() {
 	TRISCbits.RC6 = 0;
 }
 
-void init_interrupterrupt() {
+void init_interrupt() {
 
   /* configure I/O ports */
   TRISCbits.RC7 = 1; // TX1 and RX1 pin configuration
@@ -89,7 +89,9 @@ void init_interrupterrupt() {
 }
 
 void main(void) {
-  init_interrupterrupt();
+    init_ports();
+    init_usart();
+    init_interrupt();
   while (1) {
   }
   return;
