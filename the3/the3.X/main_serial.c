@@ -6,51 +6,48 @@
  */
 #include "pragmas.h"
 #include <xc.h>
+#include <string.h>
 
-char hello[6] = "hello";
-unsigned char hello_ind = 0;
-char hello_chr = 0;
-char rcvd_chr = 0;
+#define BUFFER_SIZE 128
+
+volatile char buffer[BUFFER_SIZE];
+volatile int buffer_index = 0;
+volatile int message_started = 0;
 
 inline void disable_rxtx(void) {
   PIE1bits.RC1IE = 0;
   PIE1bits.TX1IE = 0;
 }
+
 inline void enable_rxtx(void) {
   PIE1bits.RC1IE = 1;
   PIE1bits.TX1IE = 1;
 }
 
-void transmitCharAndHello(char chr) {
-  hello_chr = chr;
-  TXSTA1bits.TXEN = 1; // enable transmission.
-}
-
-void transmitData() {
-  if (hello_ind <= 4) {
-    TXREG1 = hello[hello_ind++];
-  } else if (hello_ind == 5) {
-    TXREG1 = hello_chr;
-    hello_ind++;
-  } else {
-    hello_ind = 0;
-    // wait until the TSR1 register is empty
-    // while (TXSTA1bits.TRMT == 0){}
-    TXSTA1bits.TXEN = 0; // disable transmission
-  }
-}
-
 void __interrupt(high_priority) highPriorityISR(void) {
-
   if (PIR1bits.RC1IF == 1) {
-    rcvd_chr = RCREG1;
+    char rcvd_chr = RCREG1;
     PIR1bits.RC1IF = 0;
-    transmitCharAndHello(rcvd_chr); // hello+char_received
-  }
-  //  the TXREGx register is empty
-  else if (PIR1bits.TX1IF == 1) {
-    // PIR1bits.TX1IF = 0; // it cannot be cleared in software.
-    transmitData();
+
+    if (rcvd_chr == '$') {
+      message_started = 1;
+      buffer_index = 0;
+    }
+
+    if (message_started) {
+      if (rcvd_chr == '#') {
+        message_started = 0;
+        buffer[buffer_index] = '\0'; // Null-terminate the string
+        // Process the received message here
+        // For example, you can print it or set a flag to indicate a new message is ready
+      } else if (buffer_index < BUFFER_SIZE - 1) {
+        buffer[buffer_index++] = rcvd_chr;
+      } else {
+        // Buffer overflow, reset the message state
+        message_started = 0;
+        buffer_index = 0;
+      }
+    }
   }
 }
 
@@ -60,23 +57,21 @@ void init_usart() {
 }
 
 void init_ports() {
-    TRISCbits.RC7 = 1; 
-	TRISCbits.RC6 = 0;
+  TRISCbits.RC7 = 1;
+  TRISCbits.RC6 = 0;
 }
 
 void init_interrupt() {
-
   /* configure I/O ports */
   TRISCbits.RC7 = 1; // TX1 and RX1 pin configuration
   TRISCbits.RC6 = 0;
 
   /* configure USART transmitter/receiver */
   TXSTA1 = 0x04; // (= 00000100) 8-bit transmit, transmitter NOT enabled,TXSTA1.TXEN
-            // not enabled! asynchronous, high speed mode
+                 // not enabled! asynchronous, high speed mode
   RCSTA1 = 0x90; // (= 10010000) 8-bit receiver, receiver enabled,
                  // continuous receive, serial port enabled RCSTA.CREN = 1
   BAUDCON1bits.BRG16 = 0;
-  SPBRG1 = 255; // for 40 MHz, to have 9600 baud rate, it should be 255
 
   /* configure the interrupts */
   INTCON = 0;         // clear interrupt register completely
@@ -89,10 +84,14 @@ void init_interrupt() {
 }
 
 void main(void) {
-    init_ports();
-    init_usart();
-    init_interrupt();
+  init_ports();
+  init_usart();
+  init_interrupt();
   while (1) {
+    if (!message_started && buffer_index > 0) {
+      buffer_index = 0;
+    }
   }
   return;
 }
+
