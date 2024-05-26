@@ -194,7 +194,7 @@ void tk_next() {
     if (tk_start > packet_size)
         return;
     // Search for the next whitespace or end of packet
-    while (packet_data[tk_start + tk_size] != ' ' && tk_start + tk_size < pkt_bodysize) {
+    while (packet_data[tk_start + tk_size] != ' ' && tk_start + tk_size < packet_size) {
         tk_size++;
     }
 }
@@ -207,7 +207,7 @@ void output_packet(void) {
             buf_push('$', OUTBUF);
         else if (ind == tk_start + tk_size)
             buf_push('#', OUTBUF);
-        buf_push(pkt_body[ind++], OUTBUF);
+        buf_push(packet_data[ind++], OUTBUF);
         enable_rxtx();
     }
 }
