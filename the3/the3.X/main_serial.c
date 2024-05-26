@@ -119,10 +119,20 @@ void init_usart() {
     unsigned int brg = 21; // (40000000 / (16 * 115200));
     SPBRG1 = brg;
 }
-
+#define SPBRG_VAL (21)
 void init_ports() {
     TRISCbits.RC7 = 1;
     TRISCbits.RC6 = 0;
+    TXSTA1bits.TX9 = 0;  // No 9th bit
+    TXSTA1bits.TXEN = 0; // Transmission is disabled for the time being
+    TXSTA1bits.SYNC = 0;
+    TXSTA1bits.BRGH = 0;
+    RCSTA1bits.SPEN = 1; // Enable serial port
+    RCSTA1bits.RX9 = 0;  // No 9th bit
+    RCSTA1bits.CREN = 1; // Continuous reception
+    BAUDCON1bits.BRG16 = 1;
+    SPBRGH1 = (SPBRG_VAL >> 8) & 0xff;
+    SPBRG1 = SPBRG_VAL & 0xff;
 }
 
 void init_interrupt() {
