@@ -9,7 +9,7 @@
 #include <xc.h>
 
 #define BUFFER_SIZE 128
-
+typedef unsigned char uint8_t;
 // Commands
 typedef enum {
     GOO,  // Start command, 4 bytes after
@@ -173,6 +173,89 @@ void packet_task() {
         }
     }
     enable_rxtx();
+}
+
+uint8_t tk_start; // Start index for the token
+uint8_t tk_size;  // Size of the token (0 if no token found)
+
+void tk_reset() {
+    tk_start = 0;
+    tk_size = 0;
+}
+// Finds the next token in the packet data body
+void tk_next() {
+    if (tk_start > packet_size)
+        return;                    // Return if no more data
+    tk_start = tk_start + tk_size; // Adjust starting location
+    tk_size = 0;
+    // Skip trailing whitespace, return if no data left in packet
+    while (packet_data[tk_start] == ' ' && tk_start < packet_size)
+        tk_start++;
+    if (tk_start > packet_size)
+        return;
+    // Search for the next whitespace or end of packet
+    while (packet_data[tk_start + tk_size] != ' ' && tk_start + tk_size < pkt_bodysize) {
+        tk_size++;
+    }
+}
+
+void output_packet(void) {
+    uint8_t ind = 0;
+    while (ind < packet_size) {
+        disable_rxtx();
+        if (ind == tk_start)
+            buf_push('$', OUTBUF);
+        else if (ind == tk_start + tk_size)
+            buf_push('#', OUTBUF);
+        buf_push(pkt_body[ind++], OUTBUF);
+        enable_rxtx();
+    }
+}
+void output_str(char *str) {
+    uint8_t ind = 0;
+    while (str[ind] != 0) {
+        disable_rxtx();
+        buf_push(str[ind++], OUTBUF);
+        enable_rxtx();
+    }
+}
+void output_int(int32_t v) {
+    const char hex_digits[] = "0123456789ABCDEF";
+
+    char vstr[16];
+    uint8_t str_ptr = 0;
+
+    if (v == 0) {
+        vstr[str_ptr++] = '0';
+    } else {
+        while (v != 0) {
+            vstr[str_ptr++] = hex_digits[v % 16];
+            v = v / 16;
+        }
+    }
+
+    while (str_ptr != 0) {
+        disable_rxtx();
+        buf_push(vstr[--str_ptr], OUTBUF);
+        enable_rxtx();
+    }
+}
+
+typedef enum { OUTPUT_INIT,
+               OUTPUT_RUN } output_st_t;
+output_st_t output_st = OUTPUT_INIT;
+void output_task() {
+    if (output_st == OUTPUT_INIT) {
+        output_str("*** CENG 336 Serial Calculator V1 ***\n");
+        output_st = OUTPUT_RUN;
+    } else if (output_st == OUTPUT_RUN) {
+        disable_rxtx();
+        if (!buf_isempty(OUTBUF) && TXSTA1bits.TXEN == 0) {
+            TXSTA1bits.TXEN = 1;
+            TXREG1 = buf_pop(OUTBUF);
+        }
+        enable_rxtx();
+    }
 }
 
 void main(void) {
