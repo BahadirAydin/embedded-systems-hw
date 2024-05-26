@@ -264,6 +264,7 @@ void main(void) {
     init_interrupt();
     while (1) {
         packet_task();
+        output_task();
     }
     return;
 }
