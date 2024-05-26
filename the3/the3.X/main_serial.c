@@ -113,8 +113,8 @@ void __interrupt(high_priority) highPriorityISR(void) {
     if (PIR1bits.TX1IF)
         transmit_isr();
     if (INTCONbits.TMR0IF) {
-        TMR0H = 0x65; // High byte of 26000
-        TMR0L = 0x90; // Low byte of 26000
+        TMR0H = 0xCF;
+        TMR0L = 0xD4;
         INTCONbits.TMR0IF = 0;
     }
 }
@@ -148,8 +148,8 @@ void init_interrupt() {
 void init_timers() {
     INTCON2bits.TMR0IP = 1; // Timer0 high priority
     T0CON = 0b00000010;     // 16-bit mode, pre-scaler 1:64
-    TMR0H = 0xCF;           // High byte of 26000
-    TMR0L = 0xD4;           // Low byte of 26000
+    TMR0H = 0xCF;
+    TMR0L = 0xD4;
 }
 void start_timer() { T0CONbits.TMR0ON = 1; }
 
