@@ -10,21 +10,6 @@
 
 #define BUFFER_SIZE 128
 typedef unsigned char uint8_t;
-// Commands
-typedef enum {
-    GOO,  // Start command, 4 bytes after
-    END,  // End command, NO bytes after
-    SPD,  // Speed, 4 bytes after
-    ALTC, // Altitude control, 4 bytes after
-    MAN,  // Manual control, 2 bytes after
-    LED,  // LED control, 2 bytes after
-} Command;
-typedef enum {
-    DST,  // Distance, 4 bytes after
-    ALTR, // Altitude response, 4 bytes after
-    PRS,  // Button press, 4 bytes after
-} Response;
-
 typedef enum {
     PACKET_WAIT,
     PACKET_GET,
@@ -34,7 +19,15 @@ typedef enum {
 #define MAX_PACKET_SIZE 16
 #define PACKET_HEADER '$'
 #define PACKET_END '#'
-uint8_t send_flag100ms;
+
+uint8_t send_flag100ms = 0;
+uint16_t remaining_dist;
+uint16_t adc_interval = 0;
+uint8_t prev_portb = 0;
+typedef enum { AUTOMATIC,
+               MANUAL } mode_t;
+mode_t mode = AUTOMATIC;
+
 uint8_t packet_data[MAX_PACKET_SIZE];
 uint8_t packet_size = 0;
 uint8_t packet_index = 0; // pkt_id in uluc hoca's code
@@ -108,6 +101,10 @@ void transmit_isr() {
         TXREG1 = buf_pop(OUTBUF);
 }
 
+uint8_t send_altitude = 0; // flag to check if we should send altitude information
+uint8_t send_buttonpress[4] = {0, 0, 0, 0}; // flag to check if we should send button press information RB7-4
+
+uint8_t counter = 0;
 void __interrupt(high_priority) highPriorityISR(void) {
     if (PIR1bits.RC1IF)
         receive_isr();
@@ -118,6 +115,31 @@ void __interrupt(high_priority) highPriorityISR(void) {
         TMR0H = 0xCE;
         TMR0L = 0xD4;
         INTCONbits.TMR0IF = 0;
+        if(adc_interval != 0){
+            if(counter == adc_interval){
+                send_altitude = 1;
+                counter = 0;
+            }
+            counter++;
+        }
+    }
+    if (INTCONbits.RBIF){
+        uint8_t portb_read = PORTB;
+        uint8_t changed_pins = (prev_portb ^ portb_read) & portb_read; // taken from our the2 code
+         if (changed_pins & 0b10000000) {
+            send_buttonpress[0] = 1;
+         }
+        if (changed_pins & 0b01000000) {
+            send_buttonpress[1] = 1;
+        }
+        if (changed_pins & 0b00100000) {
+            send_buttonpress[2] = 1;
+        }
+        if (changed_pins & 0b00010000) {
+            send_buttonpress[3] = 1;
+        }
+        prev_portb = PORTB;
+        INTCONbits.RBIF = 0;
     }
 }
 void __interrupt(low_priority) lowPriorityISR(void) {}
@@ -131,12 +153,14 @@ void init_adc() {
 }
 #define SPBRG_VAL (21)
 void init_ports() {
+    TRISB = 0b11110000; // RB4-7 are input
     TRISCbits.RC7 = 1;
     TRISCbits.RC6 = 0;
     LATA = 0;
     LATB = 0;
     LATC = 0;
     LATD = 0;
+    prev_portb = PORTB;
     TXSTA1bits.TX9 = 0;  // No 9th bit
     TXSTA1bits.TXEN = 0; // Transmission is disabled for the time being
     TXSTA1bits.SYNC = 0;
@@ -151,10 +175,15 @@ void init_ports() {
 
 void init_interrupt() {
     enable_rxtx();
-    RCONbits.IPEN = 1;
-    INTCONbits.PEIE = 1;
-    INTCONbits.TMR0IE = 1;
-    INTCONbits.TMR0IF = 0;
+
+    INTCONbits.RBIF = 0;   // clear interrupt flag
+    INTCONbits.RBIE = 0;   // disabled because we start at automatic mode
+    INTCON2bits.RBIP = 0;  // high priority
+
+    RCONbits.IPEN = 1; // Enable interrupt priority
+    INTCONbits.PEIE = 1; // Enable peripheral interrupts
+    INTCONbits.TMR0IE = 1; // Enable Timer0 interrupt
+    INTCONbits.TMR0IF = 0; // Clear Timer0 interrupt flag
     INTCONbits.GIE = 1; // globally enable interrupts
 }
 void init_timers() {
@@ -267,12 +296,45 @@ void output_int(int32_t v) {
     }
 }
 
+void push_dst(){
+    output_str(PACKET_HEADER);
+    output_str("DST");
+    output_int(remaining_dist); // burada bunu kullanmak doğru mu çok emin değilim output_int'i kontrol etmedim
+    output_str(PACKET_END);
+}
+void push_alt(){
+    output_str(PACKET_HEADER);
+    output_str("ALT");
+    // TODO 
+    output_str(PACKET_END);
+}
+void push_buttonpress(uint8_t button){
+    output_str(PACKET_HEADER);
+    output_str("PRS");
+    output_int(button);
+    output_str(PACKET_END);
+}
+
+void send_sensor_information(){
+    push_dst();
+    if(send_altitude == 1){
+        push_alt();
+        send_altitude = 0;
+    }
+    for (int i = 0; i < 4; i++){
+        if(send_buttonpress[i] == 1){
+            push_buttonpress(i);
+            send_buttonpress[i] = 0;
+        }
+    }
+}
+
 typedef enum { OUTPUT_INIT,
                OUTPUT_RUN } output_st_t;
 output_st_t output_st = OUTPUT_INIT;
 void output_task() {
     if (output_st == OUTPUT_INIT) {
-        output_str("$ABCDEF#");
+        send_sensor_information();
         output_st = OUTPUT_RUN;
     } else if (output_st == OUTPUT_RUN) {
         disable_rxtx();
@@ -284,18 +346,25 @@ void output_task() {
     }
 }
 uint16_t val;
-uint16_t remaining_dist;
-uint16_t adc_interval;
 void process_go(){
     remaining_dist = val;
-
 }
 void process_spd(){
     remaining_dist -= val;
 }
 void process_alt(){
-    adc_interval = val;
     // 0 or 200 or 400 or 600 ms
+    adc_interval = val / 100; 
+    // divide it by 100 to how many times our timer should overflow to send altitude message
+}
+void process_man(){
+    if (val == 1){
+        mode = MANUAL;
+        INTCONbits.RBIE = 1; // enable button press interrupt
+    } else if (val == 0){
+        mode = AUTOMATIC;
+        INTCONbits.RBIE = 0; // disable button press interrupt
+    }
 }
 void process_led(){
     if (val == 0){
@@ -310,10 +379,25 @@ void process_led(){
         LATC = 0b00000001;
     } else if(val == 3 ){
         LATB = 0b00000001;
+    } else if ( val == 4){
+        LATA = 0b00000001;
     }
 }
+void process_end(){
+    // maybe we can just exit instead of doing these idk
+    disable_rxtx();
+    send_flag100ms = 0;
+    send_altitude = 0;
+    for (int i = 0; i < 4; i++){
+        send_buttonpress[i] = 0;
+    }
+    // disable all interrupts
+    INTCONbits.RBIE = 0;
+    INTCONbits.TMR0IE = 0;
+    INTCONbits.PEIE = 0;
+    INTCONbits.GIE = 0;
+}
 void process(){
-    // WARN
     if (packet_data[1] == 'G'){
         //GOO
         sscanf(&packet_data[4], "%04x", &val);
@@ -321,18 +405,22 @@ void process(){
     } else if ( packet_data[1] == 'M'){
         // MAN
         sscanf(&packet_data[4], "%02x", &val);
+        process_man();
     } else if ( packet_data[1] == 'L'){
         // LED
         sscanf(&packet_data[4], "%02x", &val);
+        process_led();
     } else if ( packet_data[1] == 'A'){
         // ALT
         sscanf(&packet_data[4], "%04x", &val);
+        process_alt();
     } else if ( packet_data[1] == 'S'){
         // SPD
         sscanf(&packet_data[4], "%04x", &val);
         process_spd();
     } else if ( packet_data[1] == 'E'){
         // END
+        process_end();
     }
 }
 
