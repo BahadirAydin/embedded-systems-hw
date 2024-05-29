@@ -113,7 +113,7 @@ void __interrupt(high_priority) highPriorityISR(void) {
     if (PIR1bits.TX1IF)
         transmit_isr();
     if (INTCONbits.TMR0IF) {
-        TMR0H = 0x9F;
+        TMR0H = 0xCE;
         TMR0L = 0xD4;
         INTCONbits.TMR0IF = 0;
     }
@@ -146,13 +146,16 @@ void init_ports() {
 
 void init_interrupt() {
     enable_rxtx();
+    RCONbits.IPEN = 1;
     INTCONbits.PEIE = 1;
+    INTCONbits.TMR0IE = 1;
+    INTCONbits.TMR0IF = 0;
     INTCONbits.GIE = 1; // globally enable interrupts
 }
 void init_timers() {
     INTCON2bits.TMR0IP = 1; // Timer0 high priority
     T0CON = 0b00000010;     // 16-bit mode, pre-scaler 1:8
-    TMR0H = 0x9F;
+    TMR0H = 0xCE;
     TMR0L = 0xD4;
 }
 void start_timer() { T0CONbits.TMR0ON = 1; }
