@@ -34,6 +34,7 @@ typedef enum {
 #define MAX_PACKET_SIZE 16
 #define PACKET_HEADER '$'
 #define PACKET_END '#'
+uint8_t send_flag100ms;
 uint8_t packet_data[MAX_PACKET_SIZE];
 uint8_t packet_size = 0;
 uint8_t packet_index = 0; // pkt_id in uluc hoca's code
@@ -113,6 +114,7 @@ void __interrupt(high_priority) highPriorityISR(void) {
     if (PIR1bits.TX1IF)
         transmit_isr();
     if (INTCONbits.TMR0IF) {
+        send_flag100ms = 1;
         TMR0H = 0xCE;
         TMR0L = 0xD4;
         INTCONbits.TMR0IF = 0;
@@ -123,6 +125,9 @@ void __interrupt(low_priority) lowPriorityISR(void) {}
 void init_usart() {
     unsigned int brg = 21; // (40000000 / (16 * 115200));
     SPBRG1 = brg;
+}
+void init_adc() {
+    ADCON1 = 0x0F; // labdan duyduk
 }
 #define SPBRG_VAL (21)
 void init_ports() {
@@ -267,7 +272,7 @@ typedef enum { OUTPUT_INIT,
 output_st_t output_st = OUTPUT_INIT;
 void output_task() {
     if (output_st == OUTPUT_INIT) {
-        output_str("*** CENG 336 Serial Calculator V1 ***\n");
+        output_str("$ABCDEF#");
         output_st = OUTPUT_RUN;
     } else if (output_st == OUTPUT_RUN) {
         disable_rxtx();
@@ -314,8 +319,8 @@ void process(){
         sscanf(&packet_data[4], "%04x", &val);
         process_go();
     } else if ( packet_data[1] == 'M'){
-        sscanf(&packet_data[4], "%02x", &val);
         // MAN
+        sscanf(&packet_data[4], "%02x", &val);
     } else if ( packet_data[1] == 'L'){
         // LED
         sscanf(&packet_data[4], "%02x", &val);
@@ -334,6 +339,7 @@ void process(){
 void main(void) {
     init_ports();
     init_usart();
+    init_adc();
     init_interrupt();
     init_timers();
     start_timer();
@@ -343,7 +349,11 @@ void main(void) {
             process();
             packet_valid = 0;
         }
-        output_task();
+        if (send_flag100ms){
+            send_flag100ms = 0;
+            output_task();
+            output_st = OUTPUT_INIT;
+        }
     }
     return;
 }
