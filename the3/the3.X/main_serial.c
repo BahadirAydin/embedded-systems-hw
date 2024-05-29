@@ -113,7 +113,7 @@ void __interrupt(high_priority) highPriorityISR(void) {
     if (PIR1bits.TX1IF)
         transmit_isr();
     if (INTCONbits.TMR0IF) {
-        TMR0H = 0xCF;
+        TMR0H = 0x9F;
         TMR0L = 0xD4;
         INTCONbits.TMR0IF = 0;
     }
@@ -128,6 +128,10 @@ void init_usart() {
 void init_ports() {
     TRISCbits.RC7 = 1;
     TRISCbits.RC6 = 0;
+    LATA = 0;
+    LATB = 0;
+    LATC = 0;
+    LATD = 0;
     TXSTA1bits.TX9 = 0;  // No 9th bit
     TXSTA1bits.TXEN = 0; // Transmission is disabled for the time being
     TXSTA1bits.SYNC = 0;
@@ -147,8 +151,8 @@ void init_interrupt() {
 }
 void init_timers() {
     INTCON2bits.TMR0IP = 1; // Timer0 high priority
-    T0CON = 0b00000010;     // 16-bit mode, pre-scaler 1:64
-    TMR0H = 0xCF;
+    T0CON = 0b00000010;     // 16-bit mode, pre-scaler 1:8
+    TMR0H = 0x9F;
     TMR0L = 0xD4;
 }
 void start_timer() { T0CONbits.TMR0ON = 1; }
@@ -272,10 +276,55 @@ void output_task() {
     }
 }
 uint16_t val;
+uint16_t remaining_dist;
+uint16_t adc_interval;
+void process_go(){
+    remaining_dist = val;
+
+}
+void process_spd(){
+    remaining_dist -= val;
+}
+void process_alt(){
+    adc_interval = val;
+    // 0 or 200 or 400 or 600 ms
+}
+void process_led(){
+    if (val == 0){
+        LATA = 0;
+        LATB = 0;
+        LATC = 0;
+        LATD = 0;
+    }
+    else if(val == 1){
+        LATD = 0b00000001;
+    } else if(val == 2 ){
+        LATC = 0b00000001;
+    } else if(val == 3 ){
+        LATB = 0b00000001;
+    }
+}
 void process(){
     // WARN
     if (packet_data[1] == 'G'){
-        sprintf(packet_data[4], "%04x", &val);
+        //GOO
+        sscanf(&packet_data[4], "%04x", &val);
+        process_go();
+    } else if ( packet_data[1] == 'M'){
+        sscanf(&packet_data[4], "%02x", &val);
+        // MAN
+    } else if ( packet_data[1] == 'L'){
+        // LED
+        sscanf(&packet_data[4], "%02x", &val);
+    } else if ( packet_data[1] == 'A'){
+        // ALT
+        sscanf(&packet_data[4], "%04x", &val);
+    } else if ( packet_data[1] == 'S'){
+        // SPD
+        sscanf(&packet_data[4], "%04x", &val);
+        process_spd();
+    } else if ( packet_data[1] == 'E'){
+        // END
     }
 }
 
