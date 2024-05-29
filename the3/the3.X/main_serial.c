@@ -31,7 +31,7 @@ typedef enum {
     PACKET_ACK,
 } State;
 
-#define MAX_PACKET_SIZE 128
+#define MAX_PACKET_SIZE 16
 #define PACKET_HEADER '$'
 #define PACKET_END '#'
 uint8_t packet_data[MAX_PACKET_SIZE];
@@ -175,8 +175,10 @@ void packet_task() {
             } else if (v == PACKET_HEADER) {
                 // Unexpected packet start. Abort current packet and restart
                 packet_size = 0;
-            } else
-                packet_data[packet_size++] = v;
+            } else {
+                packet_data[packet_size] = v;
+                packet_size++;
+            }
         }
         if (packet_state == PACKET_ACK) {
             // Packet is processed, reset state
@@ -269,6 +271,13 @@ void output_task() {
         enable_rxtx();
     }
 }
+uint16_t val;
+void process(){
+    // WARN
+    if (packet_data[1] == 'G'){
+        sprintf(packet_data[4], "%04x", &val);
+    }
+}
 
 void main(void) {
     init_ports();
@@ -278,6 +287,10 @@ void main(void) {
     start_timer();
     while (1) {
         packet_task();
+        if(packet_valid){
+            process();
+            packet_valid = 0;
+        }
         output_task();
     }
     return;
