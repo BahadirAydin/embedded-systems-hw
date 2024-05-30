@@ -335,12 +335,15 @@ void output_str(char *str) {
 }
 
 // push int v in the parameter to outbuf
-void output_int(int32_t v) {
+void output_int(int32_t v, uint8_t is_four) {
     char vstr[16];
     int str_len, str_ptr;
     
     // Convert integer to hex string
-    sprintf(vstr, "%04x", v);
+    if(is_four)
+        sprintf(vstr, "%04x", v);
+    else
+        sprintf(vstr, "%02x", v);
     
     // Get the length of the string
     str_len = strlen(vstr);
@@ -357,21 +360,21 @@ void output_int(int32_t v) {
 void push_dst(){
     output_str(packet_header_str);
     output_str("DST");
-    output_int(remaining_dist); // burada bunu kullanmak doğru mu çok emin değilim output_int'i kontrol etmedim
+    output_int(remaining_dist,1); // burada bunu kullanmak doğru mu çok emin değilim output_int'i kontrol etmedim
     output_str(packet_end_str);
     output_str(packet_end_str);
 }
 void push_alt(){
     output_str(packet_header_str);
     output_str("ALT");
-    output_int(height);       // TODO: change this to value read from ADC
+    output_int(height,1);       // TODO: change this to value read from ADC
     output_str(packet_end_str);
     output_str(packet_end_str);
 }
 void push_buttonpress(uint8_t button){
     output_str(packet_header_str);
     output_str("PRS");
-    output_int(button);
+    output_int(button,0);
     output_str(packet_end_str);
     output_str(packet_end_str);
 }
