@@ -51,6 +51,8 @@ volatile uint8_t tail[2] = {0, 0};
 volatile int buffer_index = 0;
 volatile int message_started = 0;
 
+uint16_t adc_value = 0;
+
 // disables receive and transmit interrupts
 inline void disable_rxtx(void) {
     PIE1bits.RC1IE = 0;
@@ -133,7 +135,18 @@ uint8_t send_altitude = 0; // flag to check if we should send altitude informati
 uint8_t send_buttonpress[4] = {0, 0, 0, 0}; // flag to check if we should send button press information RB7-4
 
 uint8_t alt_counter = 0;
+uint8_t start_adc_flag = 0;
+
 void __interrupt(high_priority) highPriorityISR(void) {
+    if (PIR1bits.ADIF) {
+        // ADC interrupt
+        // read the ADC result
+        // set the flag to send the altitude information
+        // clear the interrupt flag
+        adc_value = (ADRESH << 8) + ADRESL;
+        send_altitude = 1;
+        PIR1bits.ADIF = 0;
+    }
     if (PIR1bits.RC1IF)
         receive_isr();
     if (PIR1bits.TX1IF)
@@ -143,11 +156,11 @@ void __interrupt(high_priority) highPriorityISR(void) {
         reset_timer_values();
         INTCONbits.TMR0IF = 0;
         if(adc_interval != 0){
-            if(alt_counter == adc_interval){
-                send_altitude = 1;
-                alt_counter = 0;
-            }
             alt_counter++;
+            if(alt_counter == adc_interval){
+                alt_counter = 0;
+                start_adc_flag = 1;
+            }
         }
     }
     if (INTCONbits.RBIF){
@@ -181,7 +194,10 @@ void init_adc() {
     ADCON2bits.ADFM = 1; // Right justified
     ADCON2bits.ACQT = 0b101; // 12 tad
     ADCON2bits.ADCS = 0b010; // Fosc/32
-
+    ADRESH = 0x00;
+    ADRESL = 0x00;
+    PIR1bits.ADIF = 0; // Clear ADC interrupt flag
+    PIE1bits.ADIE = 1; // Enable ADC interrupt
 }
 #define SPBRG_VAL (21)
 void init_ports() {
@@ -351,7 +367,7 @@ void push_dst(){
 void push_alt(){
     output_str(packet_header_str);
     output_str("ALT");
-    output_int(9000);       // TODO: change this to value read from ADC
+    output_int(adc_value);       // TODO: change this to value read from ADC
     output_str(packet_end_str);
     output_str(packet_end_str);
 }
@@ -361,6 +377,11 @@ void push_buttonpress(uint8_t button){
     output_int(button);
     output_str(packet_end_str);
     output_str(packet_end_str);
+}
+
+char adc_result[6];
+void start_adc(){
+    GODONE = 1;
 }
 
 void send_sensor_information(){
@@ -410,8 +431,9 @@ void process_spd(){
 
 void process_alt(){
     // 0 or 200 or 400 or 600 ms
-    adc_interval = val / 100; 
+    adc_interval = val / 100;
     // divide it by 100 to how many times our timer should overflow to send altitude message
+    alt_counter = 0; 
 }
 
 void process_man(){
@@ -494,9 +516,14 @@ void main(void) {
     init_ports();
     init_usart();
     init_adc();
-    init_interrupt();
     init_timers();
+    init_interrupt();
     while (1) {
+        if(start_adc_flag){
+            start_adc();
+            start_adc_flag = 0;
+        }
+
         packet_task();
         output_task();
         if(packet_valid){
