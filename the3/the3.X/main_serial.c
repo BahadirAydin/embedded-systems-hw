@@ -206,9 +206,8 @@ void init_adc() {
 }
 #define SPBRG_VAL (21)
 void init_ports() {
+  LATB = 0;
   TRISB = 0b11110000; // RB4-7 are input
-  TRISCbits.RC7 = 1;
-  TRISCbits.RC6 = 0;
   TRISHbits.RH4 = 1;
   TRISAbits.RA0 = 0;
   TRISBbits.RB0 = 0;
@@ -216,6 +215,7 @@ void init_ports() {
   TRISDbits.RD0 = 0;
   LATA = 0;
   LATB = 0;
+  PORTB = 0;
   LATC = 0;
   LATD = 0;
   prev_portb = PORTB;
@@ -295,29 +295,6 @@ void packet_task() {
 
 uint8_t tk_start; // Start index for the token
 uint8_t tk_size;  // Size of the token (0 if no token found)
-
-// We don't use the following two, but let's keep it in case
-void tk_reset() {
-  tk_start = 0;
-  tk_size = 0;
-}
-// Finds the next token in the packet data body
-void tk_next() {
-  if (tk_start > packet_size)
-    return;                      // Return if no more data
-  tk_start = tk_start + tk_size; // Adjust starting location
-  tk_size = 0;
-  // Skip trailing whitespace, return if no data left in packet
-  while (packet_data[tk_start] == ' ' && tk_start < packet_size)
-    tk_start++;
-  if (tk_start > packet_size)
-    return;
-  // Search for the next whitespace or end of packet
-  while (packet_data[tk_start + tk_size] != ' ' &&
-         tk_start + tk_size < packet_size) {
-    tk_size++;
-  }
-}
 
 void output_packet(void) {
   uint8_t ind = 0;
