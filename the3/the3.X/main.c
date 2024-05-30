@@ -31,10 +31,13 @@ volatile uint8_t send_flag100ms = 0;
 uint16_t remaining_dist;
 volatile uint16_t adc_interval = 0;
 volatile uint8_t prev_portb = 0;
-typedef enum { AUTOMATIC, MANUAL } mode_t;
-volatile mode_t mode = AUTOMATIC;
+typedef enum {
+  AUTOMATIC,
+  MANUAL
+} mode_t;                         // modes. this changes with MAN command
+volatile mode_t mode = AUTOMATIC; // we start automatic mode
 
-uint8_t packet_data[MAX_PACKET_SIZE];
+uint8_t packet_data[MAX_PACKET_SIZE]; // this is enough for our needs
 uint8_t packet_size = 0;
 uint8_t packet_index = 0;
 uint8_t packet_valid = 0;
@@ -47,8 +50,6 @@ volatile uint8_t head[2] = {0, 0};
 volatile uint8_t tail[2] = {0, 0};
 
 volatile int buffer_index = 0;
-volatile int message_started = 0;
-
 volatile uint16_t adc_value = 0;
 uint16_t height = 0;
 
@@ -68,7 +69,6 @@ void reset_timer_values() {
   TMR0H = 0x85;
   TMR0L = 0xEE;
 }
-
 #pragma interrupt_level 2 // Prevents duplication of function
 uint8_t buf_isempty(buf_t buf) { return (head[buf] == tail[buf]) ? 1 : 0; }
 
@@ -146,9 +146,9 @@ void __interrupt(high_priority) highPriorityISR(void) {
     // ADC interrupt
     // read the ADC result
     // set the flag to send the altitude information
-    // clear the interrupt flag
     adc_value = (ADRESH << 8) + ADRESL;
     send_altitude = 1;
+    // clear the interrupt flag
     PIR1bits.ADIF = 0;
   }
   if (PIR1bits.RC1IF)
@@ -194,7 +194,7 @@ void __interrupt(high_priority) highPriorityISR(void) {
     }
     prev_portb = PORTB;
     INTCONbits.RBIF = 0;
-  prev_portb = PORTB;
+    prev_portb = PORTB;
   }
 }
 void __interrupt(low_priority) lowPriorityISR(void) {}
@@ -209,8 +209,8 @@ void init_adc() {
   ADCON2bits.ADFM = 1;     // Right justified
   ADCON2bits.ACQT = 0b101; // 12 tad
   ADCON2bits.ADCS = 0b010; // Fosc/32
-  ADRESH = 0x00;
-  ADRESL = 0x00;
+  ADRESH = 0x00;           // reset
+  ADRESL = 0x00;           // reset
   IPR1bits.ADIP = 1;
   IPR1bits.RC1IP = 1;
   IPR1bits.TX1IP = 1;
@@ -221,7 +221,7 @@ void init_adc() {
 void init_ports() {
   LATB = 0;
   TRISB = 0b11110000; // RB4-7 are input
-  TRISHbits.RH4 = 1;
+  TRISHbits.RH4 = 1;  // for adc this should be input
   TRISAbits.RA0 = 0;
   TRISBbits.RB0 = 0;
   TRISCbits.RC0 = 0;
@@ -247,8 +247,9 @@ void init_ports() {
 void init_interrupt() {
   enable_rxtx();
 
-  prev_portb = PORTB;
-  INTCONbits.RBIF = 0;  // clear interrupt flag
+  prev_portb = PORTB; // we read portb because of a special situation written in
+                      // pic18f datasheet
+  INTCONbits.RBIF = 0; // clear interrupt flag
   prev_portb = PORTB;
   INTCONbits.RBIE = 0;  // disabled because we start at automatic mode
   INTCON2bits.RBIP = 1; // high priority
@@ -307,21 +308,6 @@ void packet_task() {
   }
   enable_rxtx();
 }
-
-uint8_t tk_start; // Start index for the token
-uint8_t tk_size;  // Size of the token (0 if no token found)
-
-void output_packet(void) {
-  uint8_t ind = 0;
-  disable_rxtx();
-  buf_push(PACKET_HEADER, OUTBUF); // Push the packet header first
-  while (ind < packet_size) {
-    buf_push(packet_data[ind++], OUTBUF);
-  }
-  buf_push(PACKET_END, OUTBUF); // Push the packet end character
-  enable_rxtx();
-}
-
 // push the string (char*) in the parameter to outbuf
 void output_str(char *str) {
   uint8_t ind = 0;
@@ -339,9 +325,9 @@ void output_int(int32_t v, uint8_t is_four) {
 
   // Convert integer to hex string
   if (is_four)
-    sprintf(vstr, "%04x", v);
+    sprintf(vstr, "%04x", v); // some commands require four bytes
   else
-    sprintf(vstr, "%02x", v);
+    sprintf(vstr, "%02x", v); // some two
 
   // Get the length of the string
   str_len = strlen(vstr);
@@ -368,9 +354,9 @@ void push_buttonpress(uint8_t button) {
   output_int(button, 0);
 }
 
-void start_adc() { GODONE = 1; }
+void start_adc() { GODONE = 1; } // start the adc process
 
-void convert_adc_to_height() {
+void convert_adc_to_height() { // converts adc values to altitude
   if (adc_value < 256)
     height = 9000;
   else if (adc_value < 512)
@@ -383,6 +369,7 @@ void convert_adc_to_height() {
 }
 
 void send_sensor_information() {
+  // only send one packet at a time
   output_str(packet_header_str);
   if (send_altitude == 1) {
     send_altitude = 0;
@@ -421,6 +408,7 @@ uint16_t val; // writing the value read from command here
 
 void process_go() {
   remaining_dist = val;
+  // we do not start the timer at the start. instead we start it when "GOO" comes
   start_timer();
 }
 
@@ -430,23 +418,23 @@ void process_alt() {
   // 0 or 200 or 400 or 600 ms
   adc_interval = val / 100;
   // divide it by 100 to how many times our timer should overflow to send
-  // altitude message
-  // alt_counter = 0;
 }
 
 void process_man() {
   if (val == 1) {
+    // go into manual mode
     mode = MANUAL;
     prev_portb = PORTB;
     INTCONbits.RBIF = 0; // clear button press interrupt flag so that previous
                          // button presses are not processed
-  prev_portb = PORTB;
+    prev_portb = PORTB;
     INTCONbits.RBIE = 1; // enable button press interrupt
   } else if (val == 0) {
+    // go into automatic mode
     mode = AUTOMATIC;
     prev_portb = PORTB;
     INTCONbits.RBIF = 0; // just in case
-  prev_portb = PORTB;
+    prev_portb = PORTB;
     INTCONbits.RBIE = 0; // disable button press interrupt
   }
 }
@@ -515,7 +503,7 @@ void process() {
     process_end();
   }
 }
-
+// NOTE: Rarely in our altitude mode there are very small flickers. We couldn't find the reason why.
 void main(void) {
   init_ports();
   init_usart();
