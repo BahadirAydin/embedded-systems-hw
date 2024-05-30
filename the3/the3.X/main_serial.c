@@ -160,7 +160,7 @@ void __interrupt(high_priority) highPriorityISR(void) {
     reset_timer_values();
     INTCONbits.TMR0IF = 0;
     if (adc_interval != 0) {
-      if (alt_counter == adc_interval) {
+      if (alt_counter >= adc_interval) {
         alt_counter = 0;
         start_adc_flag = 1;
       }
@@ -438,7 +438,7 @@ void process_alt() {
   adc_interval = val / 100;
   // divide it by 100 to how many times our timer should overflow to send
   // altitude message
-  alt_counter = 0;
+  // alt_counter = 0;
 }
 
 void process_man() {
