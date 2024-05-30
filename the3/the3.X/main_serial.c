@@ -52,6 +52,7 @@ volatile int buffer_index = 0;
 volatile int message_started = 0;
 
 uint16_t adc_value = 0;
+uint8_t height = 0;
 
 // disables receive and transmit interrupts
 inline void disable_rxtx(void) {
@@ -367,7 +368,7 @@ void push_dst(){
 void push_alt(){
     output_str(packet_header_str);
     output_str("ALT");
-    output_int(adc_value);       // TODO: change this to value read from ADC
+    output_int(height);       // TODO: change this to value read from ADC
     output_str(packet_end_str);
     output_str(packet_end_str);
 }
@@ -379,13 +380,24 @@ void push_buttonpress(uint8_t button){
     output_str(packet_end_str);
 }
 
-char adc_result[6];
 void start_adc(){
     GODONE = 1;
 }
 
+void convert_adc_to_height(){
+    if(adc_value < 256)
+        height = 9000;
+    else if(adc_value < 512)
+        height = 10000;
+    else if(adc_value < 768)
+        height = 11000
+    else 
+        height = 12000;
+}
+
 void send_sensor_information(){
     if(send_altitude == 1){
+        convert_adc_to_height();
         push_alt();
         send_altitude = 0;
         return;
