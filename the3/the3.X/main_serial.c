@@ -360,14 +360,14 @@ void output_int(int32_t v, uint8_t is_four) {
 void push_dst(){
     output_str(packet_header_str);
     output_str("DST");
-    output_int(remaining_dist,1); // burada bunu kullanmak doğru mu çok emin değilim output_int'i kontrol etmedim
+    output_int(remaining_dist,1);
     output_str(packet_end_str);
     output_str(packet_end_str);
 }
 void push_alt(){
     output_str(packet_header_str);
     output_str("ALT");
-    output_int(height,1);       // TODO: change this to value read from ADC
+    output_int(height,1);
     output_str(packet_end_str);
     output_str(packet_end_str);
 }
