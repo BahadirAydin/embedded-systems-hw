@@ -445,27 +445,33 @@ void process_end(){
 }
 
 void process(){
-    if (packet_data[1] == 'G'){
+    uint8_t ind = 0;
+    
+    // sometimes our packets would start with null values. 
+    // we couldn't find why, we solved it this way.
+    while(packet_data[ind] == 0)
+        ind++;
+    if (packet_data[ind] == 'G'){
         //GOO
-        sscanf(&packet_data[4], "%04x", &val);
+        sscanf(&packet_data[ind+3], "%04x", &val);
         process_go();
-    } else if ( packet_data[1] == 'M'){
+    } else if ( packet_data[ind] == 'M'){
         // MAN
-        sscanf(&packet_data[4], "%02x", &val);
+        sscanf(&packet_data[ind+3], "%02x", &val);
         process_man();
-    } else if ( packet_data[1] == 'L'){
+    } else if ( packet_data[ind] == 'L'){
         // LED
-        sscanf(&packet_data[4], "%02x", &val);
+        sscanf(&packet_data[ind+3], "%02x", &val);
         process_led();
-    } else if ( packet_data[1] == 'A'){
+    } else if ( packet_data[ind] == 'A'){
         // ALT
-        sscanf(&packet_data[4], "%04x", &val);
+        sscanf(&packet_data[ind+3], "%04x", &val);
         process_alt();
-    } else if ( packet_data[1] == 'S'){
+    } else if ( packet_data[ind] == 'S'){
         // SPD
-        sscanf(&packet_data[4], "%04x", &val);
+        sscanf(&packet_data[ind+3], "%04x", &val);
         process_spd();
-    } else if ( packet_data[1] == 'E'){
+    } else if ( packet_data[ind] == 'E'){
         // END
         process_end();
     }
