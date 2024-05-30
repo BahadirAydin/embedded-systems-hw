@@ -20,8 +20,8 @@ typedef enum {
 #define PACKET_HEADER '$'
 #define PACKET_END '#'
 
-char packet_header = PACKET_HEADER;
-char packet_end = PACKET_END;
+const char* packet_header_str = "$";
+const char* packet_end_str = "#";
 
 uint8_t send_flag100ms = 0;
 uint16_t remaining_dist;
@@ -327,22 +327,22 @@ void output_int(int32_t v) {
 
 // push commands to the buffer
 void push_dst(){
-    output_str(&packet_header);
+    output_str(packet_header_str);
     output_str("DST");
     output_int(remaining_dist); // burada bunu kullanmak doğru mu çok emin değilim output_int'i kontrol etmedim
-    output_str(&packet_end);
+    output_str(packet_end_str);
 }
 void push_alt(){
-    output_str(&packet_header);
+    output_str(packet_header_str);
     output_str("ALT");
     // TODO 
-    output_str(&packet_end);
+    output_str(packet_end_str);
 }
 void push_buttonpress(uint8_t button){
-    output_str(&packet_header);
+    output_str(packet_header_str);
     output_str("PRS");
     output_int(button);
-    output_str(&packet_end);
+    output_str(packet_end_str);
 }
 
 void send_sensor_information(){
