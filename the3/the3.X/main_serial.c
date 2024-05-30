@@ -177,7 +177,11 @@ void init_usart() {
 }
 void init_adc() {
     ADCON0 = 0b00110001;
-    ADCON1 = 0x00; // labdan duyduk
+    ADCON1 = 0x00;
+    ADCON2bits.ADFM = 1; // Right justified
+    ADCON2bits.ACQT = 0b101; // 12 tad
+    ADCON2bits.ADCS = 0b010; // Fosc/32
+
 }
 #define SPBRG_VAL (21)
 void init_ports() {
@@ -360,17 +364,19 @@ void push_buttonpress(uint8_t button){
 }
 
 void send_sensor_information(){
-    push_dst();
     if(send_altitude == 1){
         push_alt();
         send_altitude = 0;
+        return;
     }
     for (int i = 0; i < 4; i++){
         if(send_buttonpress[i] == 1){
             push_buttonpress(i);
             send_buttonpress[i] = 0;
+            return;
         }
     }
+    push_dst();
 }
 
 typedef enum { OUTPUT_INIT,
