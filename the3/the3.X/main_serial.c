@@ -20,9 +20,9 @@ typedef enum {
 #define PACKET_HEADER '$'
 #define PACKET_END '#'
 
-const char* packet_header_str = "$";
+char* packet_header_str = "$";
 
-const char* packet_end_str = "#";
+char* packet_end_str = "#";
 
 // counter to check called functions;
 int debug_counter = 0;
@@ -52,7 +52,7 @@ volatile int buffer_index = 0;
 volatile int message_started = 0;
 
 uint16_t adc_value = 0;
-uint8_t height = 0;
+uint16_t height = 0;
 
 // disables receive and transmit interrupts
 inline void disable_rxtx(void) {
@@ -387,20 +387,24 @@ void convert_adc_to_height(){
 }
 
 void send_sensor_information(){
+    output_str(packet_header_str);
     if(send_altitude == 1){
         convert_adc_to_height();
         push_alt();
         send_altitude = 0;
+        output_str(packet_end_str);
         return;
     }
     for (int i = 0; i < 4; i++){
         if(send_buttonpress[i] == 1){
             push_buttonpress(i);
             send_buttonpress[i] = 0;
+            output_str(packet_end_str);
             return;
         }
     }
     push_dst();
+    output_str(packet_end_str);
 }
 
 typedef enum { OUTPUT_INIT,

@@ -265,6 +265,7 @@ class CMDBuffer:
         self.reset()
 
     def append(self, byte):
+        print(f"BİZİM {byte}")
         if len(byte) != 1:
             logging.error(
                 f"CMDBuffer append got byte array of size {len(byte)}")
