@@ -27,12 +27,12 @@ char *packet_end_str = "#";
 // counter to check called functions;
 int debug_counter = 0;
 
-uint8_t send_flag100ms = 0;
+volatile uint8_t send_flag100ms = 0;
 uint16_t remaining_dist;
-uint16_t adc_interval = 0;
-uint8_t prev_portb = 0;
+volatile uint16_t adc_interval = 0;
+volatile uint8_t prev_portb = 0;
 typedef enum { AUTOMATIC, MANUAL } mode_t;
-mode_t mode = AUTOMATIC;
+volatile mode_t mode = AUTOMATIC;
 
 uint8_t packet_data[MAX_PACKET_SIZE];
 uint8_t packet_size = 0;
@@ -49,7 +49,7 @@ volatile uint8_t tail[2] = {0, 0};
 volatile int buffer_index = 0;
 volatile int message_started = 0;
 
-uint16_t adc_value = 0;
+volatile uint16_t adc_value = 0;
 uint16_t height = 0;
 
 // disables receive and transmit interrupts
@@ -132,14 +132,14 @@ void transmit_isr() {
   }
 }
 
-uint8_t send_altitude =
+volatile uint8_t send_altitude =
     0; // flag to check if we should send altitude information
-uint8_t send_buttonpress[4] = {
+volatile uint8_t send_buttonpress[4] = {
     0, 0, 0,
     0}; // flag to check if we should send button press information RB7-4
 
-uint8_t alt_counter = 0;
-uint8_t start_adc_flag = 0;
+volatile uint8_t alt_counter = 0;
+volatile uint8_t start_adc_flag = 0;
 
 void __interrupt(high_priority) highPriorityISR(void) {
   if (PIR1bits.ADIF) {
@@ -168,8 +168,12 @@ void __interrupt(high_priority) highPriorityISR(void) {
     }
   }
   if (INTCONbits.RBIF) {
-    uint8_t portb_read = PORTB;
-    uint8_t changed_pins =
+    if (mode == AUTOMATIC) { // just in case
+      INTCONbits.RBIF = 0;
+      return;
+    }
+    volatile uint8_t portb_read = PORTB;
+    volatile uint8_t changed_pins =
         (prev_portb ^ portb_read) & portb_read; // taken from our the2 code
     if (changed_pins & 0b10000000) {
       send_buttonpress[0] = 1;
@@ -421,9 +425,12 @@ void process_alt() {
 void process_man() {
   if (val == 1) {
     mode = MANUAL;
+    INTCONbits.RBIF = 0; // clear button press interrupt flag so that previous
+                         // button presses are not processed
     INTCONbits.RBIE = 1; // enable button press interrupt
   } else if (val == 0) {
     mode = AUTOMATIC;
+    INTCONbits.RBIF = 0; // just in case
     INTCONbits.RBIE = 0; // disable button press interrupt
   }
 }
