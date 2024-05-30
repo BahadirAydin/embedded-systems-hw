@@ -170,6 +170,7 @@ void __interrupt(high_priority) highPriorityISR(void) {
   if (INTCONbits.RBIF) {
     if (mode == AUTOMATIC) { // just in case
       INTCONbits.RBIF = 0;
+      prev_portb = PORTB;
       return;
     }
     volatile uint8_t portb_read = PORTB;
@@ -177,18 +178,23 @@ void __interrupt(high_priority) highPriorityISR(void) {
         (prev_portb ^ portb_read) & portb_read; // taken from our the2 code
     if (changed_pins & 0b10000000) {
       send_buttonpress[0] = 1;
+      LATAbits.LATA0 = 0;
     }
     if (changed_pins & 0b01000000) {
       send_buttonpress[1] = 1;
+      LATBbits.LATB0 = 0;
     }
     if (changed_pins & 0b00100000) {
       send_buttonpress[2] = 1;
+      LATCbits.LATC0 = 0;
     }
     if (changed_pins & 0b00010000) {
       send_buttonpress[3] = 1;
+      LATDbits.LATD0 = 0;
     }
     prev_portb = PORTB;
     INTCONbits.RBIF = 0;
+  prev_portb = PORTB;
   }
 }
 void __interrupt(low_priority) lowPriorityISR(void) {}
@@ -205,6 +211,9 @@ void init_adc() {
   ADCON2bits.ADCS = 0b010; // Fosc/32
   ADRESH = 0x00;
   ADRESL = 0x00;
+  IPR1bits.ADIP = 1;
+  IPR1bits.RC1IP = 1;
+  IPR1bits.TX1IP = 1;
   PIR1bits.ADIF = 0; // Clear ADC interrupt flag
   PIE1bits.ADIE = 1; // Enable ADC interrupt
 }
@@ -238,9 +247,11 @@ void init_ports() {
 void init_interrupt() {
   enable_rxtx();
 
+  prev_portb = PORTB;
   INTCONbits.RBIF = 0;  // clear interrupt flag
+  prev_portb = PORTB;
   INTCONbits.RBIE = 0;  // disabled because we start at automatic mode
-  INTCON2bits.RBIP = 0; // high priority
+  INTCON2bits.RBIP = 1; // high priority
 
   RCONbits.IPEN = 1;     // Enable interrupt priority
   INTCONbits.PEIE = 1;   // Enable peripheral interrupts
@@ -425,12 +436,16 @@ void process_alt() {
 void process_man() {
   if (val == 1) {
     mode = MANUAL;
+    prev_portb = PORTB;
     INTCONbits.RBIF = 0; // clear button press interrupt flag so that previous
                          // button presses are not processed
+  prev_portb = PORTB;
     INTCONbits.RBIE = 1; // enable button press interrupt
   } else if (val == 0) {
     mode = AUTOMATIC;
+    prev_portb = PORTB;
     INTCONbits.RBIF = 0; // just in case
+  prev_portb = PORTB;
     INTCONbits.RBIE = 0; // disable button press interrupt
   }
 }
