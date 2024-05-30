@@ -63,6 +63,12 @@ inline void enable_rxtx(void) {
     PIE1bits.TX1IE = 1;
 }
 
+void reset_timer_values(){
+    TMR0H = 0xC2;
+    TMR0L = 0xF4;
+}
+
+
 #pragma interrupt_level 2 // Prevents duplication of function
 uint8_t buf_isempty(buf_t buf) { return (head[buf] == tail[buf]) ? 1 : 0; }
 
@@ -207,11 +213,6 @@ void init_interrupt() {
     INTCONbits.TMR0IE = 1; // Enable Timer0 interrupt
     INTCONbits.TMR0IF = 0; // Clear Timer0 interrupt flag
     INTCONbits.GIE = 1; // globally enable interrupts
-}
-
-void reset_timer_values(){
-    TMR0H = 0xC2;
-    TMR0L = 0xF4;
 }
 
 void init_timers() {
