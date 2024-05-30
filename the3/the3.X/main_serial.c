@@ -130,6 +130,7 @@ void transmit_isr() {
     // Otherwise, send next byte
     else
         TXREG1 = buf_pop(OUTBUF);
+        while (TXSTA1bits.TRMT == 0){}
 }
 
 uint8_t send_altitude = 0; // flag to check if we should send altitude information
@@ -313,15 +314,13 @@ void tk_next() {
 
 void output_packet(void) {
     uint8_t ind = 0;
+    disable_rxtx();
+    buf_push(PACKET_HEADER, OUTBUF); // Push the packet header first
     while (ind < packet_size) {
-        disable_rxtx();
-        if (ind == tk_start)
-            buf_push('$', OUTBUF);
-        else if (ind == tk_start + tk_size)
-            buf_push('#', OUTBUF);
         buf_push(packet_data[ind++], OUTBUF);
-        enable_rxtx();
     }
+    buf_push(PACKET_END, OUTBUF); // Push the packet end character
+    enable_rxtx();
 }
 
 // push the string (char*) in the parameter to outbuf
@@ -358,25 +357,16 @@ void output_int(int32_t v, uint8_t is_four) {
 
 // push commands to the buffer
 void push_dst(){
-    output_str(packet_header_str);
     output_str("DST");
     output_int(remaining_dist,1);
-    output_str(packet_end_str);
-    output_str(packet_end_str);
 }
 void push_alt(){
-    output_str(packet_header_str);
     output_str("ALT");
     output_int(height,1);
-    output_str(packet_end_str);
-    output_str(packet_end_str);
-}
+} 
 void push_buttonpress(uint8_t button){
-    output_str(packet_header_str);
     output_str("PRS");
     output_int(button,0);
-    output_str(packet_end_str);
-    output_str(packet_end_str);
 }
 
 void start_adc(){
