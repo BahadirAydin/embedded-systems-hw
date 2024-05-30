@@ -64,8 +64,8 @@ inline void enable_rxtx(void) {
 }
 
 void reset_timer_values(){
-    TMR0H = 0xC2;
-    TMR0L = 0xF4;
+    TMR0H = 0x85;
+    TMR0L = 0xEE;
 }
 
 
@@ -184,6 +184,7 @@ void init_ports() {
     TRISB = 0b11110000; // RB4-7 are input
     TRISCbits.RC7 = 1;
     TRISCbits.RC6 = 0;
+    TRISHbits.RH4 = 1;
     LATA = 0;
     LATB = 0;
     LATC = 0;
@@ -217,7 +218,7 @@ void init_interrupt() {
 
 void init_timers() {
     INTCON2bits.TMR0IP = 1; // Timer0 high priority
-    T0CON = 0b00000101;     // 16-bit mode, pre-scaler 1:64
+    T0CON = 0b00000100;     // 16-bit mode, pre-scaler 1:32
     reset_timer_values();
 }
 void start_timer() { T0CONbits.TMR0ON = 1; }
