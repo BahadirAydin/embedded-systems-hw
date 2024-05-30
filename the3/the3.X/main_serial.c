@@ -336,23 +336,19 @@ void output_str(char *str) {
 
 // push int v in the parameter to outbuf
 void output_int(int32_t v) {
-    const char hex_digits[] = "0123456789ABCDEF";
-
     char vstr[16];
-    uint8_t str_ptr = 0;
-
-    if (v == 0) {
-        vstr[str_ptr++] = '0';
-    } else {
-        while (v != 0) {
-            vstr[str_ptr++] = hex_digits[v % 16];
-            v = v / 16;
-        }
-    }
-
-    while (str_ptr != 0) {
+    int str_len, str_ptr;
+    
+    // Convert integer to hex string
+    sprintf(vstr, "%04x", v);
+    
+    // Get the length of the string
+    str_len = strlen(vstr);
+    
+    // Output each character to the buffer
+    for (str_ptr = 0; str_ptr < str_len; str_ptr++) {
         disable_rxtx();
-        buf_push(vstr[--str_ptr], OUTBUF);
+        buf_push(vstr[str_ptr], OUTBUF);
         enable_rxtx();
     }
 }
