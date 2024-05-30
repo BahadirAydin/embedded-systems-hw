@@ -20,6 +20,9 @@ typedef enum {
 #define PACKET_HEADER '$'
 #define PACKET_END '#'
 
+char packet_header = PACKET_HEADER;
+char packet_end = PACKET_END;
+
 uint8_t send_flag100ms = 0;
 uint16_t remaining_dist;
 uint16_t adc_interval = 0;
@@ -30,7 +33,7 @@ mode_t mode = AUTOMATIC;
 
 uint8_t packet_data[MAX_PACKET_SIZE];
 uint8_t packet_size = 0;
-uint8_t packet_index = 0; // pkt_id in uluc hoca's code
+uint8_t packet_index = 0;
 uint8_t packet_valid = 0;
 State packet_state = PACKET_WAIT;
 #define BUFSIZE 128
@@ -44,10 +47,13 @@ volatile uint8_t tail[2] = {0, 0};
 volatile int buffer_index = 0;
 volatile int message_started = 0;
 
+// disables receive and transmit interrupts
 inline void disable_rxtx(void) {
     PIE1bits.RC1IE = 0;
     PIE1bits.TX1IE = 0;
 }
+
+// enables receive and transmit interrupts
 inline void enable_rxtx(void) {
     PIE1bits.RC1IE = 1;
     PIE1bits.TX1IE = 1;
@@ -57,20 +63,23 @@ inline void enable_rxtx(void) {
 uint8_t buf_isempty(buf_t buf) { return (head[buf] == tail[buf]) ? 1 : 0; }
 
 #pragma interrupt_level 2 // Prevents duplication of function
+//writes the character v to the buffer specified by buf
 void buf_push(uint8_t v, buf_t buf) {
     if (buf == INBUF)
         inbuf[head[buf]] = v;
     else
         outbuf[head[buf]] = v;
     head[buf]++;
-    if (head[buf] == BUFSIZE)
+    if (head[buf] == BUFSIZE) // if we have reached to the end, go back to the start of buffer
         head[buf] = 0;
-    if (head[buf] == tail[buf]) {
+    if (head[buf] == tail[buf]) { // if the buffer is full (head reached tail)
         return;
     }
 }
 /* Retrieve data from buffer */
 #pragma interrupt_level 2 // Prevents duplication of function
+// reads and returns the char currently at the tail of the buffer, 
+// the buffer is specified by the buf parameter
 uint8_t buf_pop(buf_t buf) {
     uint8_t v;
     if (buf_isempty(buf)) {
@@ -81,16 +90,25 @@ uint8_t buf_pop(buf_t buf) {
         else
             v = outbuf[tail[buf]];
         tail[buf]++;
-        if (tail[buf] == BUFSIZE)
+        if (tail[buf] == BUFSIZE)   // end of the buffer array, go to start.
             tail[buf] = 0;
         return v;
     }
 }
 
+// receive interrupt subroutine
+// clear the receive interrupt flag
+// write the received character to the input buffer (push buffer)
 void receive_isr() {
     PIR1bits.RC1IF = 0;      // Acknowledge interrupt
     buf_push(RCREG1, INBUF); // Buffer incoming byte
 }
+
+
+// transmit interrupt subroutine
+// clear the transmit interrupt flag
+// write the tail end of buffer to TXREG (pop buffer)
+// if there is no data left in the buffer to write (head == tail), turn of transmission
 void transmit_isr() {
     PIR1bits.TX1IF = 0; // Acknowledge interrupt
     // If all bytes are transmitted, turn off transmission
@@ -194,6 +212,10 @@ void init_timers() {
 }
 void start_timer() { T0CONbits.TMR0ON = 1; }
 
+// disable interrupts, since we are working on the packet
+// read the incoming data (written into the buffer) into the packet, one character
+// if reading the packet is complete, set packet_valid to one
+// reenable interrupts on the way out.
 void packet_task() {
     disable_rxtx();
     // Wait until new bytes arrive
@@ -210,13 +232,14 @@ void packet_task() {
         if (packet_state == PACKET_GET) {
             v = buf_pop(INBUF);
             if (v == PACKET_END) {
-                // End of packet is encountered, signal calc_task())
+                // End of packet is encountered
                 packet_state = PACKET_ACK;
                 packet_valid = 1;
             } else if (v == PACKET_HEADER) {
                 // Unexpected packet start. Abort current packet and restart
                 packet_size = 0;
             } else {
+                // write the character into the end of the packet
                 packet_data[packet_size] = v;
                 packet_size++;
             }
@@ -224,7 +247,7 @@ void packet_task() {
         if (packet_state == PACKET_ACK) {
             // Packet is processed, reset state
             packet_state = PACKET_WAIT;
-            packet_index++;
+            packet_index++; // not necessary for us, which packet we have received now
         }
     }
     enable_rxtx();
@@ -233,6 +256,8 @@ void packet_task() {
 uint8_t tk_start; // Start index for the token
 uint8_t tk_size;  // Size of the token (0 if no token found)
 
+
+//We don't use the following two, but let's keep it in case
 void tk_reset() {
     tk_start = 0;
     tk_size = 0;
@@ -266,6 +291,8 @@ void output_packet(void) {
         enable_rxtx();
     }
 }
+
+// push the string (char*) in the parameter to outbuf
 void output_str(char *str) {
     uint8_t ind = 0;
     while (str[ind] != 0) {
@@ -274,6 +301,8 @@ void output_str(char *str) {
         enable_rxtx();
     }
 }
+
+// push int v in the parameter to outbuf
 void output_int(int32_t v) {
     const char hex_digits[] = "0123456789ABCDEF";
 
@@ -296,23 +325,24 @@ void output_int(int32_t v) {
     }
 }
 
+// push commands to the buffer
 void push_dst(){
-    output_str(PACKET_HEADER);
+    output_str(&packet_header);
     output_str("DST");
     output_int(remaining_dist); // burada bunu kullanmak doğru mu çok emin değilim output_int'i kontrol etmedim
-    output_str(PACKET_END);
+    output_str(&packet_end);
 }
 void push_alt(){
-    output_str(PACKET_HEADER);
+    output_str(&packet_header);
     output_str("ALT");
     // TODO 
-    output_str(PACKET_END);
+    output_str(&packet_end);
 }
 void push_buttonpress(uint8_t button){
-    output_str(PACKET_HEADER);
+    output_str(&packet_header);
     output_str("PRS");
     output_int(button);
-    output_str(PACKET_END);
+    output_str(&packet_end);
 }
 
 void send_sensor_information(){
@@ -330,8 +360,12 @@ void send_sensor_information(){
 }
 
 typedef enum { OUTPUT_INIT,
-               OUTPUT_RUN } output_st_t;
+               OUTPUT_RUN 
+} output_st_t;
+
 output_st_t output_st = OUTPUT_INIT;
+
+
 void output_task() {
     if (output_st == OUTPUT_INIT) {
         send_sensor_information();
@@ -345,18 +379,25 @@ void output_task() {
         enable_rxtx();
     }
 }
-uint16_t val;
+
+
+uint16_t val; // writing the value read from command here
+
+
 void process_go(){
     remaining_dist = val;
 }
+
 void process_spd(){
     remaining_dist -= val;
 }
+
 void process_alt(){
     // 0 or 200 or 400 or 600 ms
     adc_interval = val / 100; 
     // divide it by 100 to how many times our timer should overflow to send altitude message
 }
+
 void process_man(){
     if (val == 1){
         mode = MANUAL;
@@ -366,6 +407,7 @@ void process_man(){
         INTCONbits.RBIE = 0; // disable button press interrupt
     }
 }
+
 void process_led(){
     if (val == 0){
         LATA = 0;
@@ -383,6 +425,7 @@ void process_led(){
         LATA = 0b00000001;
     }
 }
+
 void process_end(){
     // maybe we can just exit instead of doing these idk
     disable_rxtx();
@@ -397,6 +440,7 @@ void process_end(){
     INTCONbits.PEIE = 0;
     INTCONbits.GIE = 0;
 }
+
 void process(){
     if (packet_data[1] == 'G'){
         //GOO
