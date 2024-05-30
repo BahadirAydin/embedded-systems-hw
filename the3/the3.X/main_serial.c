@@ -134,8 +134,7 @@ void __interrupt(high_priority) highPriorityISR(void) {
         transmit_isr();
     if (INTCONbits.TMR0IF) {
         send_flag100ms = 1;
-        TMR0H = 0xCE;
-        TMR0L = 0xD4;
+        reset_timer_values();
         INTCONbits.TMR0IF = 0;
         if(adc_interval != 0){
             if(alt_counter == adc_interval){
@@ -171,7 +170,8 @@ void init_usart() {
     SPBRG1 = brg;
 }
 void init_adc() {
-    ADCON1 = 0x0F; // labdan duyduk
+    ADCON0 = 0b00110001;
+    ADCON1 = 0x00; // labdan duyduk
 }
 #define SPBRG_VAL (21)
 void init_ports() {
@@ -208,11 +208,16 @@ void init_interrupt() {
     INTCONbits.TMR0IF = 0; // Clear Timer0 interrupt flag
     INTCONbits.GIE = 1; // globally enable interrupts
 }
+
+void reset_timer_values(){
+    TMR0H = 0xC2;
+    TMR0L = 0xF4;
+}
+
 void init_timers() {
     INTCON2bits.TMR0IP = 1; // Timer0 high priority
-    T0CON = 0b00000010;     // 16-bit mode, pre-scaler 1:8
-    TMR0H = 0xCE;
-    TMR0L = 0xD4;
+    T0CON = 0b00000101;     // 16-bit mode, pre-scaler 1:64
+    reset_timer_values();
 }
 void start_timer() { T0CONbits.TMR0ON = 1; }
 
@@ -340,7 +345,7 @@ void push_dst(){
 void push_alt(){
     output_str(packet_header_str);
     output_str("ALT");
-    // TODO 
+    output_int(9000);       // TODO: change this to value read from ADC
     output_str(packet_end_str);
     output_str(packet_end_str);
 }
