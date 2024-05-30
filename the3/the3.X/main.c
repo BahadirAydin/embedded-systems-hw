@@ -385,10 +385,11 @@ void convert_adc_to_height() {
 void send_sensor_information() {
   output_str(packet_header_str);
   if (send_altitude == 1) {
+    send_altitude = 0;
     convert_adc_to_height();
     push_alt();
-    send_altitude = 0;
     output_str(packet_end_str);
+    send_altitude = 0;
     return;
   }
   for (int i = 0; i < 4; i++) {
