@@ -158,11 +158,11 @@ void __interrupt(high_priority) highPriorityISR(void) {
         reset_timer_values();
         INTCONbits.TMR0IF = 0;
         if(adc_interval != 0){
-            alt_counter++;
             if(alt_counter == adc_interval){
                 alt_counter = 0;
                 start_adc_flag = 1;
             }
+            alt_counter++;
         }
     }
     if (INTCONbits.RBIF){
