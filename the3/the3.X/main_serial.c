@@ -207,6 +207,10 @@ void init_ports() {
     TRISCbits.RC7 = 1;
     TRISCbits.RC6 = 0;
     TRISHbits.RH4 = 1;
+    TRISAbits.RA0 = 0;
+    TRISBbits.RB0 = 0;
+    TRISCbits.RC0 = 0;
+    TRISDbits.RD0 = 0;
     LATA = 0;
     LATB = 0;
     LATC = 0;
