@@ -390,9 +390,11 @@ void convert_adc_to_height(){
     else if(adc_value < 512)
         height = 10000;
     else if(adc_value < 768)
-        height = 11000
-    else 
+        height = 11000;
+    else {
         height = 12000;
+    }
+        
 }
 
 void send_sensor_information(){
