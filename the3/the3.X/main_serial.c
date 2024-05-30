@@ -21,7 +21,11 @@ typedef enum {
 #define PACKET_END '#'
 
 const char* packet_header_str = "$";
+
 const char* packet_end_str = "#";
+
+// counter to check called functions;
+int debug_counter = 0;
 
 uint8_t send_flag100ms = 0;
 uint16_t remaining_dist;
@@ -122,7 +126,7 @@ void transmit_isr() {
 uint8_t send_altitude = 0; // flag to check if we should send altitude information
 uint8_t send_buttonpress[4] = {0, 0, 0, 0}; // flag to check if we should send button press information RB7-4
 
-uint8_t counter = 0;
+uint8_t alt_counter = 0;
 void __interrupt(high_priority) highPriorityISR(void) {
     if (PIR1bits.RC1IF)
         receive_isr();
@@ -134,11 +138,11 @@ void __interrupt(high_priority) highPriorityISR(void) {
         TMR0L = 0xD4;
         INTCONbits.TMR0IF = 0;
         if(adc_interval != 0){
-            if(counter == adc_interval){
+            if(alt_counter == adc_interval){
                 send_altitude = 1;
-                counter = 0;
+                alt_counter = 0;
             }
-            counter++;
+            alt_counter++;
         }
     }
     if (INTCONbits.RBIF){
@@ -331,17 +335,20 @@ void push_dst(){
     output_str("DST");
     output_int(remaining_dist); // burada bunu kullanmak doğru mu çok emin değilim output_int'i kontrol etmedim
     output_str(packet_end_str);
+    output_str(packet_end_str);
 }
 void push_alt(){
     output_str(packet_header_str);
     output_str("ALT");
     // TODO 
     output_str(packet_end_str);
+    output_str(packet_end_str);
 }
 void push_buttonpress(uint8_t button){
     output_str(packet_header_str);
     output_str("PRS");
     output_int(button);
+    output_str(packet_end_str);
     output_str(packet_end_str);
 }
 
@@ -367,17 +374,12 @@ output_st_t output_st = OUTPUT_INIT;
 
 
 void output_task() {
-    if (output_st == OUTPUT_INIT) {
-        send_sensor_information();
-        output_st = OUTPUT_RUN;
-    } else if (output_st == OUTPUT_RUN) {
-        disable_rxtx();
-        if (!buf_isempty(OUTBUF) && TXSTA1bits.TXEN == 0) {
-            TXSTA1bits.TXEN = 1;
-            TXREG1 = buf_pop(OUTBUF);
-        }
-        enable_rxtx();
+    disable_rxtx();
+    if (!buf_isempty(OUTBUF) && TXSTA1bits.TXEN == 0) {
+        TXSTA1bits.TXEN = 1;
+        TXREG1 = buf_pop(OUTBUF);
     }
+    enable_rxtx();
 }
 
 
@@ -386,6 +388,7 @@ uint16_t val; // writing the value read from command here
 
 void process_go(){
     remaining_dist = val;
+    start_timer();
 }
 
 void process_spd(){
@@ -474,16 +477,16 @@ void main(void) {
     init_adc();
     init_interrupt();
     init_timers();
-    start_timer();
     while (1) {
         packet_task();
+        output_task();
         if(packet_valid){
             process();
             packet_valid = 0;
         }
         if (send_flag100ms){
+            send_sensor_information();
             send_flag100ms = 0;
-            output_task();
             output_st = OUTPUT_INIT;
         }
     }
